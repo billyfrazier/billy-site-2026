@@ -35,11 +35,11 @@ export function initScene({ stage, motionChip, onProgress }) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (narrow.matches) {
-      pivot.position.set(0, 0.3, 0);
-      pivot.scale.setScalar(0.85);
+      pivot.position.set(0, 0.42, 0);
+      pivot.scale.setScalar(0.78);
       camera.position.set(0, 0.1, 3.1);
     } else {
-      pivot.position.set(0.55, 0.1, 0);
+      pivot.position.set(0.55, -0.02, 0);
       pivot.scale.setScalar(1);
       camera.position.set(0, 0.1, 2.9);
     }
@@ -136,7 +136,8 @@ export function initScene({ stage, motionChip, onProgress }) {
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
         bust.position.sub(center);
-        bust.scale.setScalar(1.6 / Math.max(size.x, size.y, size.z));
+        bust.scale.setScalar(1.55 / Math.max(size.x, size.y, size.z));
+        bust.rotation.x = 0.13; // counter the model's baked-in upward gaze
         attach(bust);
       },
       (e) => onProgress?.(e.total ? e.loaded / e.total : 0),

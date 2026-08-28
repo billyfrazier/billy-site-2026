@@ -208,6 +208,10 @@ a { color: inherit; text-decoration: none; }
     bottom: 5.6rem;
     transform: none;
     width: calc(100vw - 2 * var(--grid-margin));
+    /* keep type readable where it overlaps the bust */
+    background: linear-gradient(to top, rgb(255 255 255 / 0.88) 78%, transparent);
+    padding: 2.5rem 0.9rem 0.9rem;
+    margin-left: -0.9rem;
   }
   .intro-line { margin-bottom: 1rem; }
   .headline { font-size: 1.35rem; min-height: 0; }
