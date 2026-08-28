@@ -1,0 +1,52 @@
+---
+import '../styles/global.css';
+const hasBust = false; // flip to true once public/models/billy-bust.glb exists
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Billy Frazier</title>
+  <meta name="description" content="Billy Frazier — writer, speaker, author of Fumbling Forward. Fumbling forward through work and life while sharing notes with the rest of the class." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="canonical" href="https://billyfrazier.is/" />
+  <meta property="og:title" content="Billy Frazier" />
+  <meta property="og:description" content="Fumbling forward through work and life while sharing notes with the rest of the class." />
+  <meta property="og:type" content="website" />
+  {hasBust && <link rel="preload" href="/models/billy-bust.glb" as="fetch" crossorigin="anonymous" />}
+</head>
+<body data-has-bust={hasBust || undefined}>
+  <div class="stage" id="stage" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a href="/">Billy Frazier</a>
+    <span class="glyph" aria-hidden="true">✳</span>
+    <a href="mailto:hello@billyfrazier.is">Let's talk</a>
+  </header>
+
+  <main class="col">
+    <p class="intro-line">Billy Frazier — writer, speaker, professional beginner.</p>
+    <h1 class="headline" aria-live="polite"><span id="headline"></span><span class="cursor" id="cursor" aria-hidden="true"></span></h1>
+    <nav class="chips" aria-label="What would you like to do?">
+      <button class="chip" data-reply="help">Learn how I can help</button>
+      <button class="chip" data-reply="book">Buy my book</button>
+      <button class="chip" data-reply="substack">Subscribe to my Substack</button>
+      <button class="chip" data-reply="contact">Drop a quick line</button>
+    </nav>
+    <div class="followup" id="followup"></div>
+  </main>
+
+  <div class="bottom-left">
+    <button class="reset-btn" id="reset" aria-label="Start over">↺</button>
+    <div class="progress" role="presentation"><i></i></div>
+  </div>
+
+  <div class="bottom-right">
+    <button class="chip motion-chip" id="motion-chip" hidden>Enable motion</button>
+  </div>
+
+  <script>
+    import '../scripts/main.js';
+  </script>
+</body>
+</html>

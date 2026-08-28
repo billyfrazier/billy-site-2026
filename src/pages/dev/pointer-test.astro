@@ -1,0 +1,81 @@
+---
+// DEV ONLY: deterministic screenshot page. Statically imports the scene so the
+// browser's load event waits for three.js + first render (the prod page defers
+// it, which races headless captures). #tl/#tr/#bl/#br pins the pointer to a
+// corner; ?instant makes typing immediate. Excluded from production builds.
+if (import.meta.env.PROD && import.meta.env.PUBLIC_DEV_PAGES !== '1') return Astro.redirect('/');
+import '../../styles/global.css';
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dev shot</title>
+</head>
+<body>
+  <div class="stage" id="stage" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a href="/">Billy Frazier</a>
+    <span class="glyph" aria-hidden="true">✳</span>
+    <a href="mailto:hello@billyfrazier.is">Let's talk</a>
+  </header>
+
+  <main class="col">
+    <p class="intro-line">Billy Frazier — writer, speaker, professional beginner.</p>
+    <h1 class="headline" aria-live="polite"><span id="headline"></span><span class="cursor" id="cursor" aria-hidden="true"></span></h1>
+    <nav class="chips" aria-label="What would you like to do?">
+      <button class="chip" data-reply="help">Learn how I can help</button>
+      <button class="chip" data-reply="book">Buy my book</button>
+      <button class="chip" data-reply="substack">Subscribe to my Substack</button>
+      <button class="chip" data-reply="contact">Drop a quick line</button>
+    </nav>
+    <div class="followup" id="followup"></div>
+  </main>
+
+  <div class="bottom-left">
+    <button class="reset-btn" id="reset" aria-label="Start over">↺</button>
+    <div class="progress" role="presentation"><i></i></div>
+  </div>
+
+  <div class="bottom-right">
+    <button class="chip motion-chip" id="motion-chip" hidden>Enable motion</button>
+  </div>
+
+  <script>
+    import { initTyper } from '../../scripts/typer.js';
+    import { initScene } from '../../scripts/scene.js'; // static: load waits for it
+
+    initTyper({
+      headlineEl: document.getElementById('headline'),
+      cursorEl: document.getElementById('cursor'),
+      followupEl: document.getElementById('followup'),
+      chipButtons: document.querySelectorAll('.chip[data-reply]'),
+      resetBtn: document.getElementById('reset'),
+      onProgress: () => {},
+    });
+    initScene({
+      stage: document.getElementById('stage'),
+      motionChip: document.getElementById('motion-chip'),
+      onProgress: () => {},
+    });
+
+    const corners = {
+      '#tl': () => [5, 5],
+      '#tr': () => [innerWidth - 5, 5],
+      '#bl': () => [5, innerHeight - 5],
+      '#br': () => [innerWidth - 5, innerHeight - 5],
+    };
+    const corner = corners[location.hash];
+    if (corner) {
+      const [x, y] = corner();
+      setInterval(() => {
+        window.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y }));
+      }, 50);
+    }
+    // Optional: ?chip=book clicks a chip after load for reply-state screenshots
+    const chip = new URLSearchParams(location.search).get('chip');
+    if (chip) setTimeout(() => document.querySelector(`[data-reply="${chip}"]`)?.click(), 300);
+  </script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+/* billyfrazier.is v2 — LISA-homage tokens (from Billy's supplied spec).
+   The font stack intentionally begins with HelveticaNowDisplay and falls back to
+   system Helvetica/Arial — do not add a webfont. */
+:root {
+  --color-bg: #ffffff;
+  --color: #000000;
+  --accent: #312dfb;
+  --studio-light: #f2f2f2;
+  --studio-dark: #d9d9d9;
+
+  --font-family: "HelveticaNowDisplay", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-size: 17px;
+  --font-size-medium: 1.7333333333rem;
+  --border-size: 2px;
+  --grid-margin: 2.6666666667rem;
+  --header-height: 4rem;
+
+  --z-canvas: 1;
+  --z-ui: 2;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  line-height: 1.3;
+  color: var(--color);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+a { color: inherit; text-decoration: none; }
+
+:focus-visible {
+  outline: var(--border-size) solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- Stage ---------- */
+.stage {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  background: radial-gradient(120% 90% at 62% 38%, var(--studio-light) 0%, var(--studio-dark) 100%);
+}
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: var(--z-canvas);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stage canvas.is-ready { animation: canvas-in 600ms ease-out backwards; }
+}
+@keyframes canvas-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Header ---------- */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--grid-margin);
+  z-index: var(--z-ui);
+  font-weight: 500;
+}
+.site-header .glyph {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+.site-header a:hover { color: var(--accent); }
+
+/* ---------- Left column ---------- */
+.col {
+  position: fixed;
+  left: var(--grid-margin);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(28rem, calc(100vw - 2 * var(--grid-margin)));
+  z-index: var(--z-ui);
+}
+.intro-line {
+  filter: blur(0.8px);
+  opacity: 0.75;
+  margin-bottom: 1.6rem;
+  max-width: 24rem;
+}
+.headline {
+  font-size: var(--font-size-medium);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  min-height: 3.2em;
+  text-wrap: balance;
+}
+.cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  background: var(--color);
+  vertical-align: -0.12em;
+  margin-left: 0.06em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cursor { animation: blink 1.1s steps(1) infinite; }
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---------- Chips ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.5rem;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  background: var(--color-bg);
+  border-radius: 999px;
+  padding: 0.62em 1.15em;
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  transition: transform 160ms ease-out, color 160ms ease-out;
+  white-space: nowrap;
+}
+.chip:hover { color: var(--accent); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) {
+  .chip, .chip:hover { transform: none; transition: none; }
+}
+.chip--copied { color: var(--accent); }
+
+.followup { margin-top: 1.1rem; display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.followup:empty { display: none; }
+
+/* ---------- Bottom controls ---------- */
+.bottom-left {
+  position: fixed;
+  left: var(--grid-margin);
+  bottom: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  z-index: var(--z-ui);
+}
+.reset-btn {
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 50%;
+  border: var(--border-size) solid var(--color);
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  background: transparent;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+.reset-btn:hover { background: var(--color); color: var(--color-bg); }
+.progress {
+  width: 160px;
+  height: var(--border-size);
+  background: rgb(0 0 0 / 0.15);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--color);
+}
+.progress.is-loading > i { background: var(--accent); }
+
+.bottom-right {
+  position: fixed;
+  right: var(--grid-margin);
+  bottom: 1.6rem;
+  z-index: var(--z-ui);
+}
+.motion-chip[hidden] { display: none; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 720px) {
+  :root { --grid-margin: 1.25rem; }
+  .col {
+    top: auto;
+    bottom: 5.6rem;
+    transform: none;
+    width: calc(100vw - 2 * var(--grid-margin));
+  }
+  .intro-line { margin-bottom: 1rem; }
+  .headline { font-size: 1.35rem; min-height: 0; }
+  .chip { font-size: 0.9rem; }
+  .bottom-left { bottom: 1.1rem; }
+  .bottom-right { bottom: 1.1rem; }
+  .progress { width: 90px; }
+}

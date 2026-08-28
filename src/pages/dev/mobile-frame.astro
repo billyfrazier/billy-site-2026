@@ -1,0 +1,11 @@
+---
+// DEV ONLY: 390px iframe wrapper — headless Chrome enforces a ~500px minimum
+// window width, so mobile layout is verified through this frame instead.
+if (import.meta.env.PROD && import.meta.env.PUBLIC_DEV_PAGES !== '1') return Astro.redirect('/');
+---
+<html lang="en">
+<head><meta charset="utf-8" /><title>mobile frame</title></head>
+<body style="margin:0">
+  <iframe src="/dev/pointer-test?instant" style="width:390px;height:844px;border:0;display:block"></iframe>
+</body>
+</html>
