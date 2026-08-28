@@ -3,7 +3,7 @@
 
 const MAX_YAW = 0.45;
 const MAX_PITCH = 0.25;
-const BASE_YAW = -0.15; // resting pose glances toward the text column
+const BASE_YAW = 0; // rest facing the viewer; the head does the looking
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
@@ -20,7 +20,7 @@ export function createControls({ canvas, motionChip }) {
   window.__bfState = state; // debug/test handle
 
   function update(dt, t) {
-    if (reduced) { state.yaw = -0.35; state.pitch = 0.05; return; }
+    if (reduced) { state.yaw = -0.22; state.pitch = 0.03; return; }
     if ((mode === 'fallback' || mode === 'idle') && performance.now() - state.lastInput > 4000) {
       state.tYaw = BASE_YAW + Math.sin(t * 0.4) * 0.12; // slow idle sway
       state.tPitch = Math.sin(t * 0.27) * 0.04;

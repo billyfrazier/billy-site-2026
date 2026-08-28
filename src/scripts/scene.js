@@ -28,6 +28,7 @@ export function initScene({ stage, motionChip, onProgress }) {
   const narrow = matchMedia('(max-width: 720px)');
   const pivot = new THREE.Group();
   scene.add(pivot);
+  let headBone = null; // set once the GLB is skinned; shoulders stay on the pivot
 
   function layout() {
     const w = innerWidth, h = innerHeight;
@@ -35,12 +36,13 @@ export function initScene({ stage, motionChip, onProgress }) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (narrow.matches) {
-      pivot.position.set(0, 0.42, 0);
-      pivot.scale.setScalar(0.78);
+      pivot.position.set(0.06, 0.34, 0);
+      pivot.scale.setScalar(0.7);
       camera.position.set(0, 0.1, 3.1);
     } else {
-      pivot.position.set(0.55, -0.02, 0);
-      pivot.scale.setScalar(1);
+      // Larger and lower than the raw fit so the shoulders bleed off-screen
+      pivot.position.set(0.55, -0.34, 0);
+      pivot.scale.setScalar(1.28);
       camera.position.set(0, 0.1, 2.9);
     }
     camera.lookAt(0, 0.1, 0); // look left of the bust so it sits right-of-center
@@ -85,8 +87,15 @@ export function initScene({ stage, motionChip, onProgress }) {
   let rafId = 0;
 
   function renderOnce() {
-    pivot.rotation.y = controls.state.yaw;
-    pivot.rotation.x = -controls.state.pitch;
+    if (headBone) {
+      // Only the head follows; shoulders stay still on the pivot.
+      // The rest offset counters the head-turn baked into the mesh geometry.
+      headBone.rotation.y = 0.15 + controls.state.yaw; // rest offset: counters the head-turn baked into the mesh
+      headBone.rotation.x = -controls.state.pitch;
+    } else {
+      pivot.rotation.y = controls.state.yaw;
+      pivot.rotation.x = -controls.state.pitch;
+    }
     renderer.render(scene, camera);
   }
 
@@ -123,6 +132,54 @@ export function initScene({ stage, motionChip, onProgress }) {
 
   stage.appendChild(canvas);
 
+  // The GLB is a single unrigged mesh. Give it two bones at runtime — a still
+  // root (shoulders) and a head bone — with a smoothstep blend band across the
+  // neck, so the head turns like a person and not like a statue on a turntable.
+  const NECK_BLEND_START = 0.52; // fraction of mesh height where the neck begins
+  const NECK_BLEND_END = 0.66;   // fully head above this
+  function skinBust(bust) {
+    let source = null;
+    bust.traverse((o) => { if (o.isMesh && !source) source = o; });
+    if (!source) return null;
+
+    const geo = source.geometry;
+    geo.computeBoundingBox();
+    const minY = geo.boundingBox.min.y;
+    const height = geo.boundingBox.max.y - minY;
+    const y0 = minY + NECK_BLEND_START * height;
+    const y1 = minY + NECK_BLEND_END * height;
+
+    const pos = geo.attributes.position;
+    const skinIndex = new Uint16Array(pos.count * 4);
+    const skinWeight = new Float32Array(pos.count * 4);
+    for (let i = 0; i < pos.count; i++) {
+      let w = (pos.getY(i) - y0) / (y1 - y0);
+      w = Math.max(0, Math.min(1, w));
+      w = w * w * (3 - 2 * w); // smoothstep: gradual bend through the neck
+      skinIndex[i * 4] = 0;
+      skinIndex[i * 4 + 1] = 1;
+      skinWeight[i * 4] = 1 - w;
+      skinWeight[i * 4 + 1] = w;
+    }
+    geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
+    geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
+
+    const rootBone = new THREE.Bone();
+    const neckBone = new THREE.Bone();
+    neckBone.position.y = y0; // head rotates about the base of the neck
+    rootBone.add(neckBone);
+
+    const skinned = new THREE.SkinnedMesh(geo, source.material);
+    skinned.position.copy(source.position);
+    skinned.rotation.copy(source.rotation);
+    skinned.scale.copy(source.scale);
+    skinned.add(rootBone);
+    skinned.bind(new THREE.Skeleton([rootBone, neckBone]));
+    source.parent.add(skinned);
+    source.parent.remove(source);
+    return neckBone;
+  }
+
   if (PLACEHOLDER) {
     attach(buildPlaceholder());
   } else {
@@ -138,6 +195,8 @@ export function initScene({ stage, motionChip, onProgress }) {
         bust.position.sub(center);
         bust.scale.setScalar(1.55 / Math.max(size.x, size.y, size.z));
         bust.rotation.x = 0.13; // counter the model's baked-in upward gaze
+        bust.rotation.y = 0.3;  // ...and its baked-in leftward pose: face the viewer
+        headBone = skinBust(bust);
         attach(bust);
       },
       (e) => onProgress?.(e.total ? e.loaded / e.total : 0),
