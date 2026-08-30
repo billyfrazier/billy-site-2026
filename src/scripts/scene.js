@@ -9,6 +9,13 @@ import { createControls } from './controls.js';
 // Flip to false once public/models/billy-bust.glb exists.
 const PLACEHOLDER = !document.body.dataset.hasBust;
 
+// Pose calibration: squares the mesh's baked-in leftward pose to the camera.
+// Overridable for tuning via ?bodyyaw= & ?headyaw= (dev only, harmless in prod).
+const q = new URLSearchParams(location.search);
+const BODY_YAW = parseFloat(q.get('bodyyaw') ?? '0.1');
+const HEAD_REST_YAW = parseFloat(q.get('headyaw') ?? '0');
+const MODEL_SUFFIX = q.get('model') ? `-${q.get('model')}` : ''; // dev: compare model candidates
+
 export function initScene({ stage, motionChip, onProgress }) {
   const canvas = document.createElement('canvas');
   try {
@@ -40,12 +47,14 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.scale.setScalar(0.7);
       camera.position.set(0, 0.1, 3.1);
     } else {
-      // Larger and lower than the raw fit so the shoulders bleed off-screen
-      pivot.position.set(0.55, -0.34, 0);
+      // Larger and lower than the raw fit so the shoulders bleed off-screen.
+      // Bust and camera share x=0: a dead-on, square perspective — the
+      // right-of-center placement comes from a CSS translate on the canvas.
+      pivot.position.set(0, -0.34, 0);
       pivot.scale.setScalar(1.28);
       camera.position.set(0, 0.1, 2.9);
     }
-    camera.lookAt(0, 0.1, 0); // look left of the bust so it sits right-of-center
+    camera.lookAt(0, 0.1, 0);
   }
   layout();
   addEventListener('resize', () => { layout(); if (!running) renderOnce(); });
@@ -90,7 +99,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     if (headBone) {
       // Only the head follows; shoulders stay still on the pivot.
       // The rest offset counters the head-turn baked into the mesh geometry.
-      headBone.rotation.y = 0.15 + controls.state.yaw; // rest offset: counters the head-turn baked into the mesh
+      headBone.rotation.y = HEAD_REST_YAW + controls.state.yaw; // rest: face front
       headBone.rotation.x = -controls.state.pitch;
     } else {
       pivot.rotation.y = controls.state.yaw;
@@ -135,8 +144,8 @@ export function initScene({ stage, motionChip, onProgress }) {
   // The GLB is a single unrigged mesh. Give it two bones at runtime — a still
   // root (shoulders) and a head bone — with a smoothstep blend band across the
   // neck, so the head turns like a person and not like a statue on a turntable.
-  const NECK_BLEND_START = 0.52; // fraction of mesh height where the neck begins
-  const NECK_BLEND_END = 0.66;   // fully head above this
+  const NECK_BLEND_START = parseFloat(q.get('neck0') ?? '0.45'); // fraction of mesh height where the neck begins
+  const NECK_BLEND_END = parseFloat(q.get('neck1') ?? '0.58');   // fully head above this
   function skinBust(bust) {
     let source = null;
     bust.traverse((o) => { if (o.isMesh && !source) source = o; });
@@ -185,7 +194,7 @@ export function initScene({ stage, motionChip, onProgress }) {
   } else {
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     loader.load(
-      '/models/billy-bust.glb',
+      `/models/billy-bust${MODEL_SUFFIX}.glb`,
       (gltf) => {
         const bust = gltf.scene;
         // Generators return arbitrary scale/orientation/origin — normalize at runtime
@@ -195,7 +204,7 @@ export function initScene({ stage, motionChip, onProgress }) {
         bust.position.sub(center);
         bust.scale.setScalar(1.55 / Math.max(size.x, size.y, size.z));
         bust.rotation.x = 0.13; // counter the model's baked-in upward gaze
-        bust.rotation.y = 0.3;  // ...and its baked-in leftward pose: face the viewer
+        bust.rotation.y = BODY_YAW; // square chest/shoulders to the camera
         headBone = skinBust(bust);
         attach(bust);
       },

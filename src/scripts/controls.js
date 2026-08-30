@@ -1,8 +1,8 @@
 // Input layer: one damped {yaw, pitch} state shared by every input mode.
 // The scene only ever reads state.yaw / state.pitch each frame.
 
-const MAX_YAW = 0.45;
-const MAX_PITCH = 0.25;
+const MAX_YAW = 0.5;
+const MAX_PITCH = 0.28;
 const BASE_YAW = 0; // rest facing the viewer; the head does the looking
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

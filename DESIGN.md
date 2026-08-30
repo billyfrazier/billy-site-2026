@@ -26,6 +26,15 @@ live there; we ship no sound. Mobile ≤720px: column drops to the lower third,
 bust recenters/scales 0.85.
 
 ## 3D scene ([src/scripts/scene.js](src/scripts/scene.js))
+- **Square-on rule:** camera and bust share x=0 (dead-on perspective); the
+  right-of-center placement comes from a CSS `translateX(14vw)` on the canvas
+  (desktop only). Never re-angle the camera to move the figure — that was the
+  original "he looks angled left" bug.
+- Pose calibration: `BODY_YAW` 0.1 squares the mesh's baked lean; head bone rest
+  offset 0. Tunable at runtime via `?bodyyaw=` `?headyaw=` `?neck0=` `?neck1=`
+  `?model=` (dev affordances).
+- Model: Meshy multi_image_to_3d from hi-res crops, 100k polys, meshopt+webp
+  (1.1MB). Raw candidates and rejects live in assets/models-raw/ (gitignored).
 - three.js, lazy chunk imported one frame after first paint (the static shell
   is the loading state). Camera 35°, bust pivot at x+0.55 (desktop) looking at
   x=0 so the figure sits right-of-center, chest cropped by the viewport bottom.
