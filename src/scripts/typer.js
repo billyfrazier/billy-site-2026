@@ -14,7 +14,7 @@ const REPLIES = {
     chips: [{ label: "Let's talk →", href: `mailto:${EMAIL}` }],
   },
   book: {
-    text: 'I wrote Fumbling Forward, part memoir and part career how-to told with a big ’ol heaping of humor told in five parts:',
+    text: 'I wrote Fumbling Forward, part memoir and part career how-to told with a big ’ol heaping of humor, in five parts:',
     items: [
       'Eating Sh!t (working in customer service)',
       'Studying Hard (working through college)',
