@@ -45,6 +45,18 @@ bust recenters/scales 0.85.
   (Box3 recenter + scale to 1.6 units).
 - Lighting: hemisphere + key + rim (neutral studio). Loop pauses on hidden tab.
 
+## Blink ([src/scripts/blink.js](src/scripts/blink.js))
+The scan has no eyelids, no blendshapes, and a shattered UV atlas — nothing to
+"close". The blink squashes the eye-aperture vertices vertically toward a line
+just below each pupil for ~150ms, every 5–7s. Eye centres are **measured
+constants** tied to the current GLB; replacing the model means re-measuring.
+How: load the site, then in the console raycast through each pupil with
+`__bfDbg` (`{THREE, camera}`) against `__bfMesh`, converting hits with
+`mesh.worldToLocal`. Verify coverage by tinting the selected vertices before
+trusting it — an off-centre selection closes the brow, not the eye. Debug
+handles: `__bfDbg`, `__bfMesh`, `__bfBlink` (`.apply(1)` holds eyes shut),
+`__bfState`, `__bfFrames`.
+
 ## Motion ([src/scripts/controls.js](src/scripts/controls.js))
 One damped {yaw,pitch}; rest pose glances toward the text (yaw −0.15). Desktop
 = cursor; touch = DeviceOrientation (iOS permission chip), else drag + slow

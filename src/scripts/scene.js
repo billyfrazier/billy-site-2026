@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createControls } from './controls.js';
+import { createBlink } from './blink.js';
 
 // Flip to false once public/models/billy-bust.glb exists.
 const PLACEHOLDER = !document.body.dataset.hasBust;
@@ -36,6 +37,7 @@ export function initScene({ stage, motionChip, onProgress }) {
   const pivot = new THREE.Group();
   scene.add(pivot);
   let headBone = null; // set once the GLB is skinned; shoulders stay on the pivot
+  let blink = null;   // eye blink, created once the mesh is skinned
 
   function layout() {
     const w = innerWidth, h = innerHeight;
@@ -69,6 +71,7 @@ export function initScene({ stage, motionChip, onProgress }) {
   scene.add(rim);
 
   const controls = createControls({ canvas, motionChip });
+  window.__bfDbg = { THREE, camera, scene, pivot }; // debug/test handle
 
   function buildPlaceholder() {
     // Stand-in bust: capsule torso + sphere head, matcap-ish grey. Swapped for the GLB later.
@@ -114,6 +117,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     const dt = Math.min(clock.getDelta(), 0.05);
     elapsed += dt;
     controls.update(dt, elapsed);
+    blink?.update(dt);
     renderOnce();
   }
 
@@ -186,6 +190,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     skinned.bind(new THREE.Skeleton([rootBone, neckBone]));
     source.parent.add(skinned);
     source.parent.remove(source);
+    window.__bfMesh = skinned; // debug/test handle
     return neckBone;
   }
 
@@ -206,6 +211,7 @@ export function initScene({ stage, motionChip, onProgress }) {
         bust.rotation.x = 0.13; // counter the model's baked-in upward gaze
         bust.rotation.y = BODY_YAW; // square chest/shoulders to the camera
         headBone = skinBust(bust);
+        if (window.__bfMesh) blink = window.__bfBlink = createBlink(window.__bfMesh);
         attach(bust);
       },
       (e) => onProgress?.(e.total ? e.loaded / e.total : 0),
