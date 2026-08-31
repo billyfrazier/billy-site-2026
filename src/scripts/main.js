@@ -13,6 +13,7 @@ function setProgress(f) {
 initTyper({
   headlineEl: document.getElementById('headline'),
   cursorEl: document.getElementById('cursor'),
+  listEl: document.getElementById('replylist'),
   followupEl: document.getElementById('followup'),
   chipButtons: document.querySelectorAll('.chip[data-reply]'),
   resetBtn: document.getElementById('reset'),
