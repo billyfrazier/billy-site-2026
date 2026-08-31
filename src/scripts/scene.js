@@ -144,8 +144,8 @@ export function initScene({ stage, motionChip, onProgress }) {
   // The GLB is a single unrigged mesh. Give it two bones at runtime — a still
   // root (shoulders) and a head bone — with a smoothstep blend band across the
   // neck, so the head turns like a person and not like a statue on a turntable.
-  const NECK_BLEND_START = parseFloat(q.get('neck0') ?? '0.45'); // fraction of mesh height where the neck begins
-  const NECK_BLEND_END = parseFloat(q.get('neck1') ?? '0.58');   // fully head above this
+  const NECK_BLEND_START = parseFloat(q.get('neck0') ?? '0.28'); // fraction of mesh height where the neck begins
+  const NECK_BLEND_END = parseFloat(q.get('neck1') ?? '0.42');   // fully head above this
   function skinBust(bust) {
     let source = null;
     bust.traverse((o) => { if (o.isMesh && !source) source = o; });
