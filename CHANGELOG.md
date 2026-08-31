@@ -1,4 +1,5 @@
 # Changelog
+- 2026-08-31 — Rest gaze centered: head rest yaw −0.12 so he looks directly at the viewer on load.
 - 2026-08-31 — Chin no longer anchored: neck blend band lowered to 0.28–0.42 so the full jaw/beard rotates with the head (stretch artifact gone).
 - 2026-08-30 — Bust v2: sharper model (hi-res regen; Meshy7/Tripo/Hunyuan candidates rejected), square-on stance via dead-on camera + CSS offset, head-only cursor follow with beard-preserving neck blend, matches site-reference.mp4 behavior.
 - 2026-08-28 — Natural head movement: runtime two-bone skinning (still shoulders, head follows cursor with a smooth neck blend); rest pose faces the viewer; larger framing with shoulders off-screen.

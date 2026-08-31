@@ -13,7 +13,7 @@ const PLACEHOLDER = !document.body.dataset.hasBust;
 // Overridable for tuning via ?bodyyaw= & ?headyaw= (dev only, harmless in prod).
 const q = new URLSearchParams(location.search);
 const BODY_YAW = parseFloat(q.get('bodyyaw') ?? '0.1');
-const HEAD_REST_YAW = parseFloat(q.get('headyaw') ?? '0');
+const HEAD_REST_YAW = parseFloat(q.get('headyaw') ?? '-0.12');
 const MODEL_SUFFIX = q.get('model') ? `-${q.get('model')}` : ''; // dev: compare model candidates
 
 export function initScene({ stage, motionChip, onProgress }) {
