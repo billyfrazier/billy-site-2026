@@ -43,11 +43,7 @@ bust recenters/scales 0.85.
 - Placeholder grey figure ships until `public/models/billy-bust.glb` exists;
   flip `hasBust` in index.astro when it lands. GLB is normalized at runtime
   (Box3 recenter + scale to 1.6 units).
-- Lighting: hemisphere + key + rim (neutral studio), ACES filmic tone mapping
-  at 1.15 exposure. The key sits well to the side (x -3.4) so the far cheek,
-  sideburn and hairline keep their shading when the head turns; a frontal key
-  clipped them to flat white. Tunable: ?hemi= ?key= ?rim= ?keyx= ?keyz= ?exp=
-  ?tone=none. Loop pauses on hidden tab.
+- Lighting: hemisphere + key + rim (neutral studio). Loop pauses on hidden tab.
 
 ## Blink ([src/scripts/blink.js](src/scripts/blink.js))
 The scan has no eyelids, no blendshapes, and a shattered UV atlas — nothing to

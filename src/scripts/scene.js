@@ -29,12 +29,6 @@ export function initScene({ stage, motionChip, onProgress }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setClearColor(0x000000, 0);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  // Filmic rolloff keeps the lit cheek/hairline from clipping to flat white,
-  // which is what washed the sideburn and beard edge out when the head turns.
-  if ((q.get('tone') ?? 'aces') === 'aces') {
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = parseFloat(q.get('exp') ?? '1.15');
-  }
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
@@ -67,16 +61,12 @@ export function initScene({ stage, motionChip, onProgress }) {
   layout();
   addEventListener('resize', () => { layout(); if (!running) renderOnce(); });
 
-  // Neutral studio lighting. Intensities are tunable via ?hemi= ?key= ?rim=
-  // so the falloff on the turned-away cheek/hairline can be judged in place.
-  const HEMI_I = parseFloat(q.get('hemi') ?? '1.0');
-  const KEY_I = parseFloat(q.get('key') ?? '1.6');
-  const RIM_I = parseFloat(q.get('rim') ?? '0.9');
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xc8ccd2, HEMI_I));
-  const keyLight = new THREE.DirectionalLight(0xffffff, KEY_I);
-  keyLight.position.set(parseFloat(q.get('keyx') ?? '-3.4'), 2.5, parseFloat(q.get('keyz') ?? '2.6'));
+  // Neutral studio lighting (used by placeholder and PBR GLBs; harmless for unlit)
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xc8ccd2, 1.0));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+  keyLight.position.set(-2, 2.5, 3);
   scene.add(keyLight);
-  const rim = new THREE.DirectionalLight(0xdfe6f0, RIM_I);
+  const rim = new THREE.DirectionalLight(0xdfe6f0, 1.0);
   rim.position.set(2.5, 1, -2);
   scene.add(rim);
 
