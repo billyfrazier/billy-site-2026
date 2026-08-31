@@ -34,7 +34,9 @@ bust recenters/scales 0.85.
   offset 0. Tunable at runtime via `?bodyyaw=` `?headyaw=` `?neck0=` `?neck1=`
   `?model=` (dev affordances).
 - Model: Meshy multi_image_to_3d from hi-res crops, 100k polys, meshopt+webp
-  (1.1MB). Raw candidates and rejects live in assets/models-raw/ (gitignored).
+  2048px (1.5MB). Raw candidates and rejects live in assets/models-raw/
+  (gitignored). **Optimize with `--simplify false`** — the default simplify pass
+  facets the silhouette and hairline; the size win isn't worth the jagged edges.
 - three.js, lazy chunk imported one frame after first paint (the static shell
   is the loading state). Camera 35°, bust pivot at x+0.55 (desktop) looking at
   x=0 so the figure sits right-of-center, chest cropped by the viewport bottom.
