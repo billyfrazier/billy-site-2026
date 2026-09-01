@@ -7,7 +7,7 @@
 // raycasting the eye corners (see DESIGN.md); they are specific to
 // public/models/billy-bust.glb and must be re-measured if the model is replaced.
 
-const EYES = [
+export const EYES = [
   { x: -0.3627, y: 0.4132, z: 0.2755 }, // viewer-left
   { x: -0.1296, y: 0.4511, z: 0.2591 }, // viewer-right
 ];

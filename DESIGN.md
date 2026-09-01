@@ -67,6 +67,11 @@ Clicking a chip emits a `bf:reply` event; the scene shows the matching prop and
 tells controls to glance up at it for 2.6s, after which cursor-following
 resumes. Anything without a prop hides whatever is showing.
 
+Props are anchored to the **midpoint between the eyes** (measured from
+blink.js's EYES constants), not to x=0 or the head bone — the bust is centred
+on its bounding box and his shoulders reach further right than his head, so
+both of those read visibly off-centre.
+
 **Props sit at z=0.25, nearer the camera than the bust** — they project ~9%
 larger than a z=0 calculation predicts, which is why the mobile anchor is
 lower than the maths suggests. Tunables: `?propy=` `?propb=` `?gpitch=`

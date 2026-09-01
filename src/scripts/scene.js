@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createControls } from './controls.js';
-import { createBlink } from './blink.js';
+import { createBlink, EYES } from './blink.js';
 import { createProps } from './props.js';
 
 // Flip to false once public/models/billy-bust.glb exists.
@@ -41,6 +41,10 @@ export function initScene({ stage, motionChip, onProgress }) {
   let blink = null;   // eye blink, created once the mesh is skinned
   let props = null;   // floating prop above the head, created with the bust
   const PROP_ANCHOR = new THREE.Vector3(0.06, 0.68, 0.25);
+  // The bust is centred on its bounding box, and the shoulders reach further
+  // right than the head — so the head is NOT at x=0. Measured from the head
+  // bone after skinning so props sit directly above it.
+  let headLocalX = 0.06;
 
   function layout() {
     const w = innerWidth, h = innerHeight;
@@ -52,7 +56,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.position.set(0.04, parseFloat(q.get('moby') ?? '0.42'), 0);
       pivot.scale.setScalar(parseFloat(q.get('mobs') ?? '0.45'));
       camera.position.set(0, 0.1, 3.1);
-      PROP_ANCHOR.set(0.04, parseFloat(q.get('propy') ?? '0.84'), 0.25);
+      PROP_ANCHOR.set(pivot.position.x + headLocalX * pivot.scale.x, parseFloat(q.get('propy') ?? '0.84'), 0.25);
       props?.setBase(parseFloat(q.get('propb') ?? '0.55'));
     } else {
       // Larger and lower than the raw fit so the shoulders bleed off-screen.
@@ -61,7 +65,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.position.set(0, parseFloat(q.get('busty') ?? '-0.45'), 0);
       pivot.scale.setScalar(parseFloat(q.get('busts') ?? '0.95'));
       camera.position.set(0, 0.1, 2.9);
-      PROP_ANCHOR.set(0.06, parseFloat(q.get('propy') ?? '0.68'), 0.25);
+      PROP_ANCHOR.set(pivot.position.x + headLocalX * pivot.scale.x, parseFloat(q.get('propy') ?? '0.68'), 0.25);
       props?.setBase(1);
     }
     camera.lookAt(0, 0.1, 0);
@@ -151,7 +155,24 @@ export function initScene({ stage, motionChip, onProgress }) {
   // Which reply shows which prop. Only the book so far.
   const PROP_FOR = { book: 'book' };
 
+  // Aim at the midpoint between the eyes — the head bone sits at the neck base,
+  // which reads noticeably right of his face once the body yaw is applied.
+  function measureHeadX() {
+    const mesh = window.__bfMesh;
+    if (!mesh) return;
+    scene.updateMatrixWorld(true);
+    const v = new THREE.Vector3(
+      (EYES[0].x + EYES[1].x) / 2,
+      (EYES[0].y + EYES[1].y) / 2,
+      (EYES[0].z + EYES[1].z) / 2,
+    );
+    mesh.localToWorld(v);
+    pivot.worldToLocal(v);
+    headLocalX = v.x;
+  }
+
   function wireProps() {
+    measureHeadX();
     props = createProps({ scene, renderer, anchor: PROP_ANCHOR });
     layout(); // re-run so the prop picks up its per-breakpoint scale
     document.addEventListener('bf:reply', (e) => {
