@@ -1,4 +1,5 @@
 # Changelog
+- 2026-08-31 — Mobile reworked to match the LISA reference: solid rounded text sheet instead of a gradient scrim, bust framed above it, filled reset button, bottom-edge progress hairline.
 - 2026-08-31 — Content pass: new intro line (unblurred), rewritten help/book/contact replies incl. the book's five parts, chips invert to black on hover, reply CTAs always black.
 - 2026-08-31 — Eyes blink every 5–7s (~150ms), via vertical squash of the eye vertices; no blink under reduced motion.
 - 2026-08-31 — Smoother model edges: dropped mesh simplification from the optimize step and doubled texture resolution to 2048 (1.5MB, was 1.1MB).

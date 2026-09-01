@@ -22,8 +22,11 @@ typed headline with blinking block cursor, four white pill chips, follow-up
 chips appear under a reply. Bottom-left: circular reset ↺ + 160×2px progress
 bar (blue while the GLB loads, black for typing progress). Bottom-right slot:
 "Enable motion" chip (iOS tilt permission) — the reference's sound controls
-live there; we ship no sound. Mobile ≤720px: column drops to the lower third,
-bust recenters/scales 0.85.
+live there; we ship no sound. Mobile ≤720px: the text moves into a solid white sheet pinned to the bottom
+with a rounded top edge (no translucent scrim over the face), the bust is framed
+in the clear space above it, the reset button becomes a filled black circle over
+the sheet, and the progress bar becomes a hairline on the bottom edge — matching
+the LISA reference.
 
 ## 3D scene ([src/scripts/scene.js](src/scripts/scene.js))
 - **Square-on rule:** camera and bust share x=0 (dead-on perspective); the

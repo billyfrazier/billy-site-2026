@@ -45,8 +45,9 @@ export function initScene({ stage, motionChip, onProgress }) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (narrow.matches) {
-      pivot.position.set(0.06, 0.34, 0);
-      pivot.scale.setScalar(0.7);
+      // Framed in the clear space above the text sheet
+      pivot.position.set(0.04, parseFloat(q.get('moby') ?? '0.45'), 0);
+      pivot.scale.setScalar(0.72);
       camera.position.set(0, 0.1, 3.1);
     } else {
       // Larger and lower than the raw fit so the shoulders bleed off-screen.
