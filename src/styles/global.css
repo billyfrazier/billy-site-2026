@@ -86,15 +86,10 @@ a { color: inherit; text-decoration: none; }
   z-index: var(--z-ui);
   font-weight: 500;
 }
-.site-header .glyph {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.2rem;
-  letter-spacing: 0.05em;
-  user-select: none;
-}
-.site-header a:hover { color: var(--accent); }
+.site-header .logo { display: flex; align-items: center; }
+.site-header .logo img { height: 1.35rem; width: auto; display: block; }
+.site-header .logo:hover { opacity: 0.75; }
+.site-header a:not(.logo):hover { color: var(--accent); }
 
 /* ---------- Left column ---------- */
 .col {

@@ -16,7 +16,7 @@ the four chips.
 - Grid margin 2.667rem, header 4rem, borders 2px.
 
 ## Layout
-Header: name left · ✳ glyph center · "Let's talk" (mailto) right. Left column
+Header: logo left (public/logo.svg — two black tags) · "Let's talk" (mailto) right. Left column
 vertically centered: blurred intro line (blur 0.8px — keep ≤1px for a11y),
 typed headline with blinking block cursor, four white pill chips, follow-up
 chips appear under a reply. Bottom-left: circular reset ↺ + 160×2px progress

@@ -5,8 +5,16 @@ const EMAIL = 'hello@billyfrazier.is';
 
 // EDIT ME (Billy): tune these replies to taste.
 const REPLIES = {
+  // EDIT ME (Billy): the home headline rotates through these — one per landing,
+  // cycling in order so a visitor never sees the same line twice in a row.
   intro: {
-    text: 'Fumbling forward through work and life while sharing notes with the rest of the class.',
+    variants: [
+      'Fumbling forward through work and life while sharing notes with the rest of the class.',
+      "Twenty-odd years of career advice, most of it learned the hard way. Where should we start?",
+      "I've been fired, freelanced, and founded things. Happy to compare notes.",
+      "No five-year plan here either. Let's talk about what's next.",
+      'Still figuring out my own career — I just write it all down. Want the notes?',
+    ],
     chips: [],
   },
   help: {
@@ -25,7 +33,7 @@ const REPLIES = {
     chips: [{ label: 'Get the book →', href: 'https://www.fumblingbook.com/' }],
   },
   substack: {
-    text: 'Fumbling Forward, the newsletter: career notes from someone still taking them. Free, occasionally useful, reliably honest.',
+    text: 'A newsletter about fumbling forward through work and life while sharing notes with the rest of the class.',
     chips: [{ label: 'Subscribe →', href: 'https://fumblingforward.substack.com/' }],
   },
   contact: {
@@ -36,6 +44,19 @@ const REPLIES = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let run = 0;
+
+const INTRO_KEY = 'bf-intro';
+function nextIntro() {
+  const list = REPLIES.intro.variants;
+  let i = 0;
+  try {
+    i = (Number(sessionStorage.getItem(INTRO_KEY)) || 0) % list.length;
+    sessionStorage.setItem(INTRO_KEY, String((i + 1) % list.length));
+  } catch {
+    i = Math.floor(Math.random() * list.length); // private mode: just pick one
+  }
+  return list[i];
+}
 
 export function initTyper({ headlineEl, cursorEl, listEl, followupEl, chipButtons, resetBtn, onProgress }) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -84,6 +105,7 @@ export function initTyper({ headlineEl, cursorEl, listEl, followupEl, chipButton
   async function typeReply(key) {
     const id = ++run;
     const reply = REPLIES[key];
+    const text = reply.variants ? nextIntro() : reply.text;
     const items = reply.items ?? [];
     followupEl.replaceChildren();
     listEl.replaceChildren();
@@ -91,7 +113,7 @@ export function initTyper({ headlineEl, cursorEl, listEl, followupEl, chipButton
     cursorEl.hidden = false;
 
     if (reduced) {
-      headlineEl.textContent = reply.text;
+      headlineEl.textContent = text;
       for (const item of items) {
         const li = document.createElement('li');
         li.textContent = item;
@@ -102,12 +124,12 @@ export function initTyper({ headlineEl, cursorEl, listEl, followupEl, chipButton
       return;
     }
 
-    const total = reply.text.length + items.reduce((n, s) => n + s.length, 0);
+    const total = text.length + items.reduce((n, s) => n + s.length, 0);
     const speed = speedFor(total);
     let typed = 0;
     const tick = () => onProgress?.(++typed / total);
 
-    if (!(await typeInto(headlineEl, reply.text, id, speed, tick))) return;
+    if (!(await typeInto(headlineEl, text, id, speed, tick))) return;
     for (const item of items) {
       if (id !== run) return;
       const li = document.createElement('li');
