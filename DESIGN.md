@@ -36,6 +36,11 @@ the LISA reference.
 - Pose calibration: `BODY_YAW` 0.1 squares the mesh's baked lean; head bone rest
   offset 0. Tunable at runtime via `?bodyyaw=` `?headyaw=` `?neck0=` `?neck1=`
   `?model=` (dev affordances).
+- Texture retouched via [tools/edit-texture.mjs](tools/edit-texture.mjs): eye
+  wrinkles/bags softened, thin temple hairline filled. Region masks are built by
+  rasterising the UVs of triangles inside a 3D region (the atlas is shattered, so
+  texture-space selection is impossible); edits are skin-hue gated and feathered.
+  Re-run it if the model is regenerated.
 - Model: Meshy multi_image_to_3d from hi-res crops, 100k polys, meshopt+webp
   2048px (1.5MB). Raw candidates and rejects live in assets/models-raw/
   (gitignored). **Optimize with `--simplify false`** — the default simplify pass
