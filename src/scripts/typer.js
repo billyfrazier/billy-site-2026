@@ -5,15 +5,17 @@ const EMAIL = 'hello@billyfrazier.is';
 
 // EDIT ME (Billy): tune these replies to taste.
 const REPLIES = {
-  // EDIT ME (Billy): the home headline rotates through these — one per landing,
-  // cycling in order so a visitor never sees the same line twice in a row.
+  // EDIT ME (Billy): humorous greetings for the home view. One shows per landing,
+  // cycled in order so a visitor never sees the same line twice in a row.
+  // Add or remove freely — the rotation adapts to the list length.
   intro: {
     variants: [
-      'Fumbling forward through work and life while sharing notes with the rest of the class.',
-      "Twenty-odd years of career advice, most of it learned the hard way. Where should we start?",
-      "I've been fired, freelanced, and founded things. Happy to compare notes.",
-      "No five-year plan here either. Let's talk about what's next.",
-      'Still figuring out my own career — I just write it all down. Want the notes?',
+      "Fancy meeting you here! How can I help?",
+      "How'd I get trapped in here?! Kidding. What's up?",
+      "Wait, how long have you been here?! Can I help you?",
+      "Ugh, I guess I'm not too busy. What's up?",
+      "You're finally here! I was starting to get worried. You rang?",
+      "Don't be shy! I'm here to help. What do you need?",
     ],
     chips: [],
   },
