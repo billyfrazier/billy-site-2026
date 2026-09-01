@@ -17,27 +17,10 @@ export function createControls({ canvas, motionChip }) {
     lastInput: 0,
   };
   let mode = 'idle'; // 'pointer' | 'tilt' | 'fallback' | 'idle'
-  let glanceUntil = 0, glanceYaw = 0, glancePitch = 0;
   window.__bfState = state; // debug/test handle
-
-  // Look somewhere specific for a moment (a prop above the head), then hand
-  // control back to the pointer. Bypasses the normal clamps so he can look up
-  // further than cursor-following ever asks for.
-  function glanceAt(yaw, pitch, ms) {
-    glanceYaw = yaw; glancePitch = pitch;
-    glanceUntil = performance.now() + ms;
-  }
 
   function update(dt, t) {
     if (reduced) { state.yaw = -0.22; state.pitch = 0.03; return; }
-    if (performance.now() < glanceUntil) {
-      state.tYaw = glanceYaw;
-      state.tPitch = glancePitch;
-      const gk = 1 - Math.exp(-5 * dt);
-      state.yaw += (state.tYaw - state.yaw) * gk;
-      state.pitch += (state.tPitch - state.pitch) * gk;
-      return;
-    }
     if ((mode === 'fallback' || mode === 'idle') && performance.now() - state.lastInput > 4000) {
       state.tYaw = BASE_YAW + Math.sin(t * 0.4) * 0.12; // slow idle sway
       state.tPitch = Math.sin(t * 0.27) * 0.04;
@@ -47,7 +30,7 @@ export function createControls({ canvas, motionChip }) {
     state.pitch += (state.tPitch - state.pitch) * k;
   }
 
-  if (reduced) return { state, update, glanceAt };
+  if (reduced) return { state, update };
 
   if (!isTouch) {
     mode = 'pointer';
@@ -56,7 +39,7 @@ export function createControls({ canvas, motionChip }) {
       state.tPitch = -((e.clientY / innerHeight) * 2 - 1) * MAX_PITCH;
       state.lastInput = performance.now();
     }, { passive: true });
-    return { state, update, glanceAt };
+    return { state, update };
   }
 
   // Touch devices: tilt (with iOS permission gesture) or drag/idle fallback
@@ -115,5 +98,5 @@ export function createControls({ canvas, motionChip }) {
     startFallback();
   }
 
-  return { state, update, glanceAt };
+  return { state, update };
 }

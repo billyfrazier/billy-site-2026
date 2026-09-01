@@ -61,21 +61,17 @@ handles: `__bfDbg`, `__bfMesh`, `__bfBlink` (`.apply(1)` holds eyes shut),
 `__bfState`, `__bfFrames`.
 
 ## Props ([src/scripts/props.js](src/scripts/props.js))
-Objects that float above the head, one per reply. The book is a textured box
-using the real cover art (public/images/book-cover.jpg) — no downloaded model.
-Clicking a chip emits a `bf:reply` event; the scene shows the matching prop and
-tells controls to glance up at it for 2.6s, after which cursor-following
-resumes. Anything without a prop hides whatever is showing.
+Selecting a chip **replaces the bust** with that reply's object at full size;
+reset (or a chip with no prop) brings him back. The book is a textured box using
+the real cover art (public/images/book-cover.jpg) — no downloaded model.
 
-Props are anchored to the **midpoint between the eyes** (measured from
-blink.js's EYES constants), not to x=0 or the head bone — the bust is centred
-on its bounding box and his shoulders reach further right than his head, so
-both of those read visibly off-centre.
-
-**Props sit at z=0.25, nearer the camera than the bust** — they project ~9%
-larger than a z=0 calculation predicts, which is why the mobile anchor is
-lower than the maths suggests. Tunables: `?propy=` `?propb=` `?gpitch=`
-`?gyaw=` `?busty=` `?busts=` `?moby=` `?mobs=`.
+Chips emit a `bf:reply` event; the scene eases a `swapT` between 0 (Billy) and 1
+(the prop), crossfading opacity on both. The prop keeps a damped share of the
+cursor yaw/pitch so the page stays cursor-responsive while he's away. Props sit
+at z=0.25, nearer the camera than the bust, so they project ~9% larger than a
+z=0 calculation predicts — placement is tuned per breakpoint, and on mobile the
+book is sized to the clear band above the text sheet. Tunables: `?propy=`
+`?propb=` `?busty=` `?busts=` `?moby=` `?mobs=`.
 
 ## Motion ([src/scripts/controls.js](src/scripts/controls.js))
 One damped {yaw,pitch}; rest pose glances toward the text (yaw −0.15). Desktop

@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-01 — Bust back to full size; selecting "Buy my book" now replaces him with the book at full size (crossfade) instead of floating it overhead.
 - 2026-09-01 — Header logo 50% larger on desktop; the floating book now sits directly above his head (anchored to the eye midpoint).
 - 2026-09-01 — Bust scaled down; a 3D book (real cover art) now floats above his head when "Buy my book" is selected, and he glances up at it before returning to cursor-following.
 - 2026-08-31 — Home headline is now a rotating humorous greeting (Billy's six lines).

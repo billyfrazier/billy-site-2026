@@ -1,16 +1,12 @@
-// Props that float above the bust's head. One per chip reply; only the book
-// exists so far. Built from primitives + the real cover art rather than a
-// downloaded model, so it costs a single texture and stays instantly tweakable.
+// Props that REPLACE the bust. Selecting a chip swaps Billy out for the object
+// at full size; reset (or a chip with no prop) swaps him back. Only the book
+// exists so far — a textured box using the real cover art, so it costs one
+// image rather than a downloaded model.
 import * as THREE from 'three';
 
 const COVER = '/images/book-cover.jpg';
 const PAGE = 0xf3efe6;
 const BOARD = 0x1b1a19;
-
-const IN_MS = 480;
-const OUT_MS = 300;
-
-const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
 function buildBook(renderer) {
   const group = new THREE.Group();
@@ -23,73 +19,53 @@ function buildBook(renderer) {
   const board = new THREE.MeshLambertMaterial({ color: BOARD });
   const pages = new THREE.MeshLambertMaterial({ color: PAGE });
   // BoxGeometry material order: +x, -x, +y, -y, +z, -z
-  const book = new THREE.Mesh(
+  group.add(new THREE.Mesh(
     new THREE.BoxGeometry(W, H, D),
     [pages, board, pages, pages, cover, board],
-  );
-  group.add(book);
+  ));
   return group;
 }
 
-// `anchor` is owned by the caller and may be moved between breakpoints;
-// `base` scales the whole prop for narrow viewports.
-export function createProps({ scene, renderer, anchor }) {
+export function createProps({ scene, renderer }) {
   const root = new THREE.Group();
-  root.position.copy(anchor);
   root.visible = false;
   scene.add(root);
-  let base = 1;
 
   const book = buildBook(renderer);
   root.add(book);
 
-  let state = 'hidden';   // 'hidden' | 'in' | 'shown' | 'out'
-  let phase = 0;          // ms into the current transition
-  let t = 0;              // seconds, for the idle float
+  let base = 1;    // full-size scale for the current breakpoint
+  let t = 0;
 
-  function show() {
-    if (state === 'in' || state === 'shown') return;
-    state = 'in';
-    phase = 0;
-    root.visible = true;
+  function setLayout({ position, scale }) {
+    root.position.copy(position);
+    base = scale;
   }
 
-  function hide() {
-    if (state === 'hidden' || state === 'out') return;
-    state = 'out';
-    phase = 0;
-  }
-
-  function update(dt) {
-    if (state === 'hidden') return;
-    t += dt;
-    phase += dt * 1000;
-
-    let k = 1;
-    if (state === 'in') {
-      k = smooth(phase / IN_MS);
-      if (phase >= IN_MS) state = 'shown';
-    } else if (state === 'out') {
-      k = 1 - smooth(phase / OUT_MS);
-      if (phase >= OUT_MS) { state = 'hidden'; root.visible = false; }
-    }
-
-    root.scale.setScalar(base * (0.55 + 0.45 * k));
+  // 0 = absent, 1 = fully swapped in. Scene drives this against the bust's fade.
+  function setAmount(k) {
+    root.visible = k > 0.001;
+    if (!root.visible) return;
+    root.scale.setScalar(base * (0.9 + 0.1 * k)); // settles into size as it arrives
     root.traverse((o) => {
       if (!o.isMesh) return;
       for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
-        m.transparent = k < 1;
+        m.transparent = k < 0.999;
         m.opacity = k;
+        m.depthWrite = k > 0.5;
       }
     });
-    // drifts up into place, then breathes
-    root.position.x = anchor.x;
-    root.position.z = anchor.z;
-    root.position.y = anchor.y - 0.12 * (1 - k) + Math.sin(t * 1.1) * 0.018;
-    book.rotation.y = Math.sin(t * 0.45) * 0.5;
-    book.rotation.z = Math.sin(t * 0.7) * 0.05;
   }
 
-  const setBase = (s) => { base = s; };
-  return { show, hide, update, setBase, root, isVisible: () => state !== 'hidden' };
+  // Keeps the cursor-responsiveness of the bust it replaced, at lower amplitude.
+  function update(dt, yaw = 0, pitch = 0) {
+    if (!root.visible) return;
+    t += dt;
+    book.rotation.y = yaw * 0.75 + Math.sin(t * 0.35) * 0.14;
+    book.rotation.x = -pitch * 0.5 + Math.sin(t * 0.5) * 0.03;
+    book.rotation.z = Math.sin(t * 0.42) * 0.03;
+    book.position.y = Math.sin(t * 1.1) * 0.012;
+  }
+
+  return { setLayout, setAmount, update, root };
 }
