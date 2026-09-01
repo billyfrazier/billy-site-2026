@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-01 — Bust scaled down; a 3D book (real cover art) now floats above his head when "Buy my book" is selected, and he glances up at it before returning to cursor-following.
 - 2026-08-31 — Home headline is now a rotating humorous greeting (Billy's six lines).
 - 2026-08-31 — Logo replaces the wordmark in the header, centre asterisk removed, home headline now rotates on every landing, new Substack reply copy.
 - 2026-08-31 — Mobile reworked to match the LISA reference: solid rounded text sheet instead of a gradient scrim, bust framed above it, filled reset button, bottom-edge progress hairline.

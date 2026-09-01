@@ -60,6 +60,18 @@ trusting it — an off-centre selection closes the brow, not the eye. Debug
 handles: `__bfDbg`, `__bfMesh`, `__bfBlink` (`.apply(1)` holds eyes shut),
 `__bfState`, `__bfFrames`.
 
+## Props ([src/scripts/props.js](src/scripts/props.js))
+Objects that float above the head, one per reply. The book is a textured box
+using the real cover art (public/images/book-cover.jpg) — no downloaded model.
+Clicking a chip emits a `bf:reply` event; the scene shows the matching prop and
+tells controls to glance up at it for 2.6s, after which cursor-following
+resumes. Anything without a prop hides whatever is showing.
+
+**Props sit at z=0.25, nearer the camera than the bust** — they project ~9%
+larger than a z=0 calculation predicts, which is why the mobile anchor is
+lower than the maths suggests. Tunables: `?propy=` `?propb=` `?gpitch=`
+`?gyaw=` `?busty=` `?busts=` `?moby=` `?mobs=`.
+
 ## Motion ([src/scripts/controls.js](src/scripts/controls.js))
 One damped {yaw,pitch}; rest pose glances toward the text (yaw −0.15). Desktop
 = cursor; touch = DeviceOrientation (iOS permission chip), else drag + slow

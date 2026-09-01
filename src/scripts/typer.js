@@ -106,6 +106,7 @@ export function initTyper({ headlineEl, cursorEl, listEl, followupEl, chipButton
 
   async function typeReply(key) {
     const id = ++run;
+    document.dispatchEvent(new CustomEvent('bf:reply', { detail: { key } }));
     const reply = REPLIES[key];
     const text = reply.variants ? nextIntro() : reply.text;
     const items = reply.items ?? [];

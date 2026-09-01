@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createControls } from './controls.js';
 import { createBlink } from './blink.js';
+import { createProps } from './props.js';
 
 // Flip to false once public/models/billy-bust.glb exists.
 const PLACEHOLDER = !document.body.dataset.hasBust;
@@ -38,6 +39,8 @@ export function initScene({ stage, motionChip, onProgress }) {
   scene.add(pivot);
   let headBone = null; // set once the GLB is skinned; shoulders stay on the pivot
   let blink = null;   // eye blink, created once the mesh is skinned
+  let props = null;   // floating prop above the head, created with the bust
+  const PROP_ANCHOR = new THREE.Vector3(0.06, 0.68, 0.25);
 
   function layout() {
     const w = innerWidth, h = innerHeight;
@@ -46,16 +49,20 @@ export function initScene({ stage, motionChip, onProgress }) {
     camera.updateProjectionMatrix();
     if (narrow.matches) {
       // Framed in the clear space above the text sheet
-      pivot.position.set(0.04, parseFloat(q.get('moby') ?? '0.45'), 0);
-      pivot.scale.setScalar(0.72);
+      pivot.position.set(0.04, parseFloat(q.get('moby') ?? '0.42'), 0);
+      pivot.scale.setScalar(parseFloat(q.get('mobs') ?? '0.45'));
       camera.position.set(0, 0.1, 3.1);
+      PROP_ANCHOR.set(0.04, parseFloat(q.get('propy') ?? '0.84'), 0.25);
+      props?.setBase(parseFloat(q.get('propb') ?? '0.55'));
     } else {
       // Larger and lower than the raw fit so the shoulders bleed off-screen.
       // Bust and camera share x=0: a dead-on, square perspective — the
       // right-of-center placement comes from a CSS translate on the canvas.
-      pivot.position.set(0, -0.34, 0);
-      pivot.scale.setScalar(1.28);
+      pivot.position.set(0, parseFloat(q.get('busty') ?? '-0.45'), 0);
+      pivot.scale.setScalar(parseFloat(q.get('busts') ?? '0.95'));
       camera.position.set(0, 0.1, 2.9);
+      PROP_ANCHOR.set(0.06, parseFloat(q.get('propy') ?? '0.68'), 0.25);
+      props?.setBase(1);
     }
     camera.lookAt(0, 0.1, 0);
   }
@@ -119,6 +126,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     elapsed += dt;
     controls.update(dt, elapsed);
     blink?.update(dt);
+    props?.update(dt);
     renderOnce();
   }
 
@@ -136,10 +144,33 @@ export function initScene({ stage, motionChip, onProgress }) {
     document.hidden ? stop() : start();
   });
 
+  const GLANCE_YAW = parseFloat(q.get('gyaw') ?? '0.1');
+  const GLANCE_PITCH = parseFloat(q.get('gpitch') ?? '0.5');
+  const GLANCE_MS = 2600;
+
+  // Which reply shows which prop. Only the book so far.
+  const PROP_FOR = { book: 'book' };
+
+  function wireProps() {
+    props = createProps({ scene, renderer, anchor: PROP_ANCHOR });
+    layout(); // re-run so the prop picks up its per-breakpoint scale
+    document.addEventListener('bf:reply', (e) => {
+      const wants = PROP_FOR[e.detail.key];
+      if (wants) {
+        props.show();
+        controls.glanceAt?.(GLANCE_YAW, GLANCE_PITCH, GLANCE_MS);
+      } else {
+        props.hide();
+      }
+      if (!running) { props.update(1); renderOnce(); } // no loop: snap to end state
+    });
+  }
+
   function attach(bust) {
     pivot.add(bust);
     renderOnce(); // synchronous first frame — never gate visibility on the loop
     canvas.classList.add('is-ready');
+    wireProps();
     onProgress?.(1);
     if (!reduced) start();
   }
