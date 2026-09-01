@@ -5,8 +5,11 @@
 import * as THREE from 'three';
 
 const COVER = '/images/book-cover.jpg';
-const PAGE = 0xf3efe6;
-const BOARD = 0x1b1a19;
+// Matched to the real paperback: cream page block, and the cover stock wrapping
+// the spine and back in the same orange (sampled from the cover art, #e1a511).
+const PAGE = 0xf1ece1;
+const SPINE = 0xd2960f;
+const BACK = 0xe1a511;
 
 function buildBook(renderer) {
   const group = new THREE.Group();
@@ -14,14 +17,17 @@ function buildBook(renderer) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 
-  const W = 0.28, H = 0.4, D = 0.05; // trade-paperback proportions
+  // 6x9in paperback, ~0.7in thick — proportions taken from the real copy
+  const W = 0.28, H = 0.4, D = 0.034;
   const cover = new THREE.MeshBasicMaterial({ map: tex });          // unlit: art stays true
-  const board = new THREE.MeshLambertMaterial({ color: BOARD });
+  const spine = new THREE.MeshLambertMaterial({ color: SPINE });
+  const back = new THREE.MeshLambertMaterial({ color: BACK });
   const pages = new THREE.MeshLambertMaterial({ color: PAGE });
   // BoxGeometry material order: +x, -x, +y, -y, +z, -z
+  // +x is the fore-edge, -x the spine; the cover faces +z
   group.add(new THREE.Mesh(
     new THREE.BoxGeometry(W, H, D),
-    [pages, board, pages, pages, cover, board],
+    [pages, spine, pages, pages, cover, back],
   ));
   return group;
 }
