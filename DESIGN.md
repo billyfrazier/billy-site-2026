@@ -63,7 +63,9 @@ handles: `__bfDbg`, `__bfMesh`, `__bfBlink` (`.apply(1)` holds eyes shut),
 ## Props ([src/scripts/props.js](src/scripts/props.js))
 Selecting a chip **replaces the bust** with that reply's object at full size;
 reset (or a chip with no prop) brings him back. The book is a textured box using
-the real cover art (public/images/book-cover.jpg) — no downloaded model. Its
+the real cover art (public/images/book-cover.jpg — cropped inset from the
+mockup; a flush crop leaves black background pixels on the edges, which render
+as an outline around the book) — no downloaded model. Its
 proportions and materials come from photos of the physical copy: a 6x9in
 paperback ~0.7in thick (thickness ≈ 12% of width), cream page block, and the
 cover stock wrapping the spine and back in the cover's own orange (#e1a511,
