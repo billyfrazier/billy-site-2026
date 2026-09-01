@@ -64,8 +64,8 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.scale.setScalar(parseFloat(q.get('busts') ?? '1.28'));
       camera.position.set(0, 0.1, 2.9);
       props?.setLayout({
-        position: new THREE.Vector3(0, parseFloat(q.get('propy') ?? '0.12'), 0.25),
-        scale: parseFloat(q.get('propb') ?? '3.4'),
+        position: new THREE.Vector3(0, parseFloat(q.get('propy') ?? '0.05'), 0.25),
+        scale: parseFloat(q.get('propb') ?? '3.0'),
       });
     }
     camera.lookAt(0, 0.1, 0);
