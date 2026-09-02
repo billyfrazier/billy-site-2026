@@ -16,7 +16,10 @@ const PLACEHOLDER = !document.body.dataset.hasBust;
 const q = new URLSearchParams(location.search);
 const BODY_YAW = parseFloat(q.get('bodyyaw') ?? '0.1');
 const HEAD_REST_YAW = parseFloat(q.get('headyaw') ?? '-0.12');
-const MODEL_SUFFIX = q.get('model') ? `-${q.get('model')}` : ''; // dev: compare model candidates
+// The rigged full-body figure; ?model=bust loads the earlier head-and-shoulders one.
+const MODEL_URL = q.get('model') === 'bust' ? '/models/billy-bust.glb'
+  : q.get('model') === 'src' ? '/models/billy-body-src.glb'   // dev: uncompressed, for texture edits
+  : '/models/billy-body.glb';
 
 export function initScene({ stage, motionChip, onProgress }) {
   const canvas = document.createElement('canvas');
@@ -49,23 +52,24 @@ export function initScene({ stage, motionChip, onProgress }) {
     camera.updateProjectionMatrix();
     if (narrow.matches) {
       // Framed in the clear space above the text sheet
-      pivot.position.set(0.04, parseFloat(q.get('moby') ?? '0.45'), 0);
-      pivot.scale.setScalar(parseFloat(q.get('mobs') ?? '0.72'));
+      // Phones crop to the upper body so he stays legible above the text sheet
+      pivot.position.set(0.04, parseFloat(q.get('moby') ?? '-0.06'), 0);
+      pivot.scale.setScalar(parseFloat(q.get('mobs') ?? '1.0'));
       camera.position.set(0, 0.1, 3.1);
       props?.setLayout({
-        position: new THREE.Vector3(0.04, parseFloat(q.get('propy') ?? '0.64'), 0.25),
-        scale: parseFloat(q.get('propb') ?? '0.95'),
+        position: new THREE.Vector3(0.04, parseFloat(q.get('propy') ?? '0.85'), 0.25),
+        scale: parseFloat(q.get('propb') ?? '0.45'),
       });
     } else {
       // Larger and lower than the raw fit so the shoulders bleed off-screen.
       // Bust and camera share x=0: a dead-on, square perspective — the
       // right-of-center placement comes from a CSS translate on the canvas.
-      pivot.position.set(0, parseFloat(q.get('busty') ?? '-0.34'), 0);
-      pivot.scale.setScalar(parseFloat(q.get('busts') ?? '1.28'));
+      pivot.position.set(0, parseFloat(q.get('busty') ?? '0.0'), 0);
+      pivot.scale.setScalar(parseFloat(q.get('busts') ?? '0.8'));
       camera.position.set(0, 0.1, 2.9);
       props?.setLayout({
-        position: new THREE.Vector3(0, parseFloat(q.get('propy') ?? '0.05'), 0.25),
-        scale: parseFloat(q.get('propb') ?? '3.0'),
+        position: new THREE.Vector3(0, parseFloat(q.get('propy') ?? '0.72'), 0.25),
+        scale: parseFloat(q.get('propb') ?? '0.5'),
       });
     }
     camera.lookAt(0, 0.1, 0);
@@ -133,7 +137,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     swapT += (swapTarget - swapT) * (1 - Math.exp(-7 * dt));
     if (Math.abs(swapTarget - swapT) < 0.002) swapT = swapTarget;
     applySwap();
-    props?.update(dt, controls.state.yaw, controls.state.pitch);
+    props?.update(dt);
     renderOnce();
   }
 
@@ -151,31 +155,23 @@ export function initScene({ stage, motionChip, onProgress }) {
     document.hidden ? stop() : start();
   });
 
-  // Which reply shows which prop. Only the book so far.
-  const PROP_FOR = { book: 'book' };
+  // Which reply floats which item above the head.
+  const PROP_FOR = { help: 'mic', book: 'book', substack: 'envelope', contact: 'bubble' };
 
   function wireProps() {
     props = createProps({ scene, renderer });
     layout(); // re-run so the prop picks up its per-breakpoint placement
     document.addEventListener('bf:reply', (e) => {
-      swapTarget = PROP_FOR[e.detail.key] ? 1 : 0;
+      const item = PROP_FOR[e.detail.key];
+      if (item) props.setItem(item);      // swap the icon while it is hidden
+      swapTarget = item ? 1 : 0;
       if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
     });
   }
 
-  // Crossfade between the bust and the prop that replaces it.
+  // The figure stays; the item above the head fades in and out.
   function applySwap() {
     props?.setAmount(swapT);
-    pivot.visible = swapT < 0.999;
-    if (!pivot.visible) return;
-    pivot.traverse((o) => {
-      if (!o.isMesh && !o.isSkinnedMesh) return;
-      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
-        m.transparent = swapT > 0.001;
-        m.opacity = 1 - swapT;
-        m.depthWrite = swapT < 0.5;
-      }
-    });
   }
 
   function attach(bust) {
@@ -243,7 +239,7 @@ export function initScene({ stage, motionChip, onProgress }) {
   } else {
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     loader.load(
-      `/models/billy-bust${MODEL_SUFFIX}.glb`,
+      MODEL_URL,
       (gltf) => {
         const bust = gltf.scene;
         // Generators return arbitrary scale/orientation/origin — normalize at runtime
@@ -254,8 +250,19 @@ export function initScene({ stage, motionChip, onProgress }) {
         bust.scale.setScalar(1.55 / Math.max(size.x, size.y, size.z));
         bust.rotation.x = 0.13; // counter the model's baked-in upward gaze
         bust.rotation.y = BODY_YAW; // square chest/shoulders to the camera
-        headBone = skinBust(bust);
-        if (window.__bfMesh) blink = window.__bfBlink = createBlink(window.__bfMesh);
+        // A rigged model already has a head bone; only the unrigged bust needs
+        // the runtime two-bone hack.
+        const bones = [];
+        bust.traverse((o) => { if (o.isBone) bones.push(o); });
+        window.__bfBones = bones.map((b) => b.name); // debug handle
+        headBone = bones.find((b) => /head/i.test(b.name)) ?? null;
+        if (!headBone) {
+          headBone = skinBust(bust);
+          if (window.__bfMesh) blink = window.__bfBlink = createBlink(window.__bfMesh);
+        } else {
+          bust.traverse((o) => { if (o.isSkinnedMesh) window.__bfMesh = o; });
+        }
+        window.__bfHeadBone = headBone;
         attach(bust);
       },
       (e) => onProgress?.(e.total ? e.loaded / e.total : 0),

@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-02 (variation-2) — Full-body rigged figure replaces the bust; chips now float Sims-style icons above his head (mic/book/envelope/speech bubble); mobile crops to upper body.
 - 2026-09-01 — Book sits a little smaller on desktop, and vertically centred at the new size.
 - 2026-09-01 — Removed the black outline around the book: the cover texture had the source mockup's black background baked into its edges.
 - 2026-09-01 — Book model matched to the physical copy: paperback proportions (thinner block), orange wrapped spine and back, cream page edges.
