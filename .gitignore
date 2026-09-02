@@ -4,6 +4,8 @@ dist/
 .vercel/
 .env
 .DS_Store
-assets/models-raw/
+assets/models-raw/*
+# ...except the uncompressed master the shipped bust is built from
+!assets/models-raw/billy-meshyhi.glb
 .vercel
 .env*
