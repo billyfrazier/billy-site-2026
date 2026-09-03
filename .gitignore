@@ -5,7 +5,10 @@ dist/
 .env
 .DS_Store
 assets/models-raw/*
-# ...except the uncompressed master the shipped bust is built from
+# ...except the uncompressed masters the shipped models are built from.
+# tools/model/ repairs the body one into public/models/billy-body.glb, so it
+# has to be here for that to be reproducible.
 !assets/models-raw/billy-meshyhi.glb
+!assets/models-raw/billy-body-raw.glb
 .vercel
 .env*

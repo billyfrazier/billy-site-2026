@@ -7,6 +7,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createControls } from './controls.js';
 import { createBlink } from './blink.js';
 import { createProps } from './props.js';
+import { createRig } from './rig.js';
 
 // Flip to false once public/models/billy-bust.glb exists.
 const PLACEHOLDER = !document.body.dataset.hasBust;
@@ -43,7 +44,17 @@ export function initScene({ stage, motionChip, onProgress }) {
   let headBone = null; // set once the GLB is skinned; shoulders stay on the pivot
   let blink = null;   // eye blink, created once the mesh is skinned
   let props = null;   // floating prop above the head, created with the bust
+  let rig = null;     // full-body performance layer (rigged model only)
   let swapT = 0, swapTarget = 0; // 0 = showing Billy, 1 = showing the prop
+  let bodyBox = null; // world-space proxy for "is the cursor over him"
+  let figure = null;
+  let lastDt = 0;
+
+  function updateBodyBox() {
+    if (!figure) return;
+    pivot.updateMatrixWorld(true);
+    bodyBox = new THREE.Box3().setFromObject(figure);
+  }
 
   function layout() {
     const w = innerWidth, h = innerHeight;
@@ -75,7 +86,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     camera.lookAt(0, 0.1, 0);
   }
   layout();
-  addEventListener('resize', () => { layout(); if (!running) renderOnce(); });
+  addEventListener('resize', () => { layout(); updateBodyBox(); if (!running) renderOnce(); });
 
   // Neutral studio lighting (used by placeholder and PBR GLBs; harmless for unlit)
   scene.add(new THREE.HemisphereLight(0xffffff, 0xc8ccd2, 1.0));
@@ -88,6 +99,84 @@ export function initScene({ stage, motionChip, onProgress }) {
 
   const controls = createControls({ canvas, motionChip });
   window.__bfDbg = { THREE, camera, scene, pivot }; // debug/test handle
+
+  // --- looking at the cursor ------------------------------------------------
+  // Aim at the point under the pointer on a plane a metre in front of him,
+  // rather than mapping screen position straight to an angle: the plane keeps
+  // the turn proportional to the real geometry, so he tracks the cursor instead
+  // of just leaning with it. The canvas is CSS-shifted (translateX(14vw)) on
+  // desktop, so NDC has to come from the canvas rect, not the window.
+  const LOOK_PLANE = 1.0;   // metres in front of his head
+  const MAX_LOOK_YAW = 0.62;
+  const MAX_LOOK_PITCH = 0.30;
+  const raycaster = new THREE.Raycaster();
+  const _ndc = new THREE.Vector2();
+  const _headW = new THREE.Vector3();
+  const _target = new THREE.Vector3();
+  const _plane = new THREE.Plane();
+  const _dir = new THREE.Vector3();
+
+  function pointerToNdc(cx, cy) {
+    const r = canvas.getBoundingClientRect();
+    _ndc.set(((cx - r.left) / r.width) * 2 - 1, -(((cy - r.top) / r.height) * 2 - 1));
+    return _ndc;
+  }
+
+  // Where the pointer lands in the world, on the look plane. Also the hit test
+  // for "is the cursor over him" — a box proxy, not the 33k-triangle mesh.
+  function pointerWorld(cx, cy) {
+    if (!headBone) return null;
+    headBone.getWorldPosition(_headW);
+    raycaster.setFromCamera(pointerToNdc(cx, cy), camera);
+    _plane.set(new THREE.Vector3(0, 0, 1), -(_headW.z + LOOK_PLANE));
+    return raycaster.ray.intersectPlane(_plane, _target) ? _target : null;
+  }
+
+  function updateLookFromPointer(cx, cy) {
+    const hit = pointerWorld(cx, cy);
+    if (!hit) return;
+    _dir.copy(hit).sub(_headW);
+    pivot.updateMatrixWorld();
+    // Into the figure's own frame, so his body yaw does not skew the aim.
+    _dir.applyQuaternion(pivot.getWorldQuaternion(new THREE.Quaternion()).invert());
+    const flat = Math.hypot(_dir.x, _dir.z) || 1e-4;
+    const yaw = Math.atan2(_dir.x, _dir.z) - BODY_YAW;
+    const pitch = Math.atan2(_dir.y, flat);
+    controls.state.tYaw = Math.max(-MAX_LOOK_YAW, Math.min(MAX_LOOK_YAW, yaw));
+    controls.state.tPitch = Math.max(-MAX_LOOK_PITCH, Math.min(MAX_LOOK_PITCH, pitch));
+    controls.state.lastInput = performance.now();
+  }
+
+  // Hover and poke. The canvas sits behind the text column and takes no pointer
+  // events, so both ride on window listeners and a ray/box test instead.
+  let hovering = false;
+  function overFigure(cx, cy) {
+    if (!bodyBox) return false;
+    raycaster.setFromCamera(pointerToNdc(cx, cy), camera);
+    return raycaster.ray.intersectsBox(bodyBox);
+  }
+
+  // These listeners are registered after the ones inside createControls, so the
+  // accurate aim overwrites the controls' straight screen-to-angle map. If
+  // there is no head bone to aim (the placeholder figure), this bails early and
+  // that simpler mapping is what stands.
+  if (!reduced && !matchMedia('(pointer: coarse)').matches) {
+    addEventListener('pointermove', (e) => {
+      updateLookFromPointer(e.clientX, e.clientY);
+      const over = overFigure(e.clientX, e.clientY);
+      if (over !== hovering) {
+        hovering = over;
+        if (over) rig?.trigger('nod');   // he clocks you arriving
+      }
+    }, { passive: true });
+
+    addEventListener('pointerdown', (e) => {
+      // Never steal a click meant for a chip, link or button.
+      if (e.target instanceof Element && e.target.closest('button, a, input')) return;
+      if (!overFigure(e.clientX, e.clientY)) return;
+      rig?.trigger('recoil');
+    }, { passive: true });
+  }
 
   function buildPlaceholder() {
     // Stand-in bust: capsule torso + sphere head, matcap-ish grey. Swapped for the GLB later.
@@ -115,8 +204,17 @@ export function initScene({ stage, motionChip, onProgress }) {
   let rafId = 0;
 
   function renderOnce() {
-    if (headBone) {
-      // Only the head follows; shoulders stay still on the pivot.
+    if (rig) {
+      // Full rig: the look is shared up the spine and layered under breathing,
+      // a weight shift and any running reaction.
+      const idle = Math.min(1, Math.max(0, (performance.now() - controls.state.lastInput - 2500) / 3000));
+      // No rest offset here: HEAD_REST_YAW counters a head-turn baked into the
+      // *bust* mesh. This rig's head bone is already neutral, and the aim above
+      // is computed in his own frame — adding it would skew his gaze off you.
+      rig.setLook(controls.state.yaw, controls.state.pitch);
+      rig.update(lastDt, elapsed, idle);
+    } else if (headBone) {
+      // Unrigged bust: only the head follows; shoulders stay still on the pivot.
       // The rest offset counters the head-turn baked into the mesh geometry.
       headBone.rotation.y = HEAD_REST_YAW + controls.state.yaw; // rest: face front
       headBone.rotation.x = -controls.state.pitch;
@@ -131,6 +229,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     window.__bfFrames = (window.__bfFrames ?? 0) + 1; // debug/test handle
     rafId = requestAnimationFrame(frame);
     const dt = Math.min(clock.getDelta(), 0.05);
+    lastDt = dt;
     elapsed += dt;
     controls.update(dt, elapsed);
     blink?.update(dt);
@@ -155,8 +254,9 @@ export function initScene({ stage, motionChip, onProgress }) {
     document.hidden ? stop() : start();
   });
 
-  // Which reply floats which item above the head.
+  // Which reply floats which item above the head, and how he answers it.
   const PROP_FOR = { help: 'mic', book: 'book', substack: 'envelope', contact: 'bubble' };
+  const GESTURE_FOR = { help: 'present', book: 'nod', substack: 'wave', contact: 'wave' };
 
   function wireProps() {
     props = createProps({ scene, renderer });
@@ -166,8 +266,20 @@ export function initScene({ stage, motionChip, onProgress }) {
       if (item) props.setItem(item);      // swap the icon while it is hidden
       swapTarget = item ? 1 : 0;
       if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
+      if (!rig) return;
+      if (item) {
+        // Look up at the thing that just appeared, then answer it. The gesture
+        // waits for the glance to peak so the two read as one beat, not two.
+        rig.trigger('glance');
+        clearTimeout(gestureTimer);
+        gestureTimer = setTimeout(() => rig?.trigger(GESTURE_FOR[e.detail.key] ?? 'nod'), 900);
+      } else {
+        clearTimeout(gestureTimer);
+        rig.trigger('shrug');            // reset: back to nothing in particular
+      }
     });
   }
+  let gestureTimer = 0;
 
   // The figure stays; the item above the head fades in and out.
   function applySwap() {
@@ -255,15 +367,19 @@ export function initScene({ stage, motionChip, onProgress }) {
         const bones = [];
         bust.traverse((o) => { if (o.isBone) bones.push(o); });
         window.__bfBones = bones.map((b) => b.name); // debug handle
-        headBone = bones.find((b) => /head/i.test(b.name)) ?? null;
+        // Exact match first: this rig also carries `head_end` and `headfront`.
+        headBone = bones.find((b) => b.name === 'Head') ?? bones.find((b) => /head/i.test(b.name)) ?? null;
         if (!headBone) {
           headBone = skinBust(bust);
           if (window.__bfMesh) blink = window.__bfBlink = createBlink(window.__bfMesh);
         } else {
           bust.traverse((o) => { if (o.isSkinnedMesh) window.__bfMesh = o; });
+          rig = window.__bfRig = createRig(bust); // full humanoid rig: perform with it
         }
         window.__bfHeadBone = headBone;
         attach(bust);
+        figure = bust;
+        updateBodyBox();
       },
       (e) => onProgress?.(e.total ? e.loaded / e.total : 0),
       () => { /* GLB failed: shell + chips still fully work */ },

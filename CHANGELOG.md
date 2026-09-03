@@ -1,4 +1,7 @@
 # Changelog
+- 2026-09-02 — He performs: procedural rig layer (breathing, weight shift, idle gaze drift) plus reactions — hover nods, clicking him recoils, each chip gets a glance up at its prop then a gesture. The cursor look is now a real aim at the pointer instead of a screen-position map, so pointing at his head makes him look back at you.
+- 2026-09-02 — Model repaired: the book baked onto his tee is properly painted out (was a dark ghost rectangle), the red bleed is gone from the black jeans, and the material is no longer fully self-lit, so the studio lights actually shape him. Texture back to 2048 for a sharper face; 948KB, up from 653KB. Pipeline in tools/model/.
+- 2026-09-02 — Fixed the preload: the page was preloading the old bust GLB (1.6MB) while the scene loaded the body.
 - 2026-09-02 (variation-2) — Full-body rigged figure replaces the bust; chips now float Sims-style icons above his head (mic/book/envelope/speech bubble); mobile crops to upper body.
 - 2026-09-01 — Book sits a little smaller on desktop, and vertically centred at the new size.
 - 2026-09-01 — Removed the black outline around the book: the cover texture had the source mockup's black background baked into its edges.

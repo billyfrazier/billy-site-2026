@@ -1,0 +1,231 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">
+{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const q = new URLSearchParams(location.search);
+const SIZE = 2048;
+const gltf = await new Promise((res, rej) =>
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(q.get('model'), res, undefined, rej));
+const root = gltf.scene; root.updateMatrixWorld(true);
+let mesh = null; root.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+mesh.skeleton.update();
+
+// --- read the base colour texture into a pixel buffer -----------------------
+const img = mesh.material.map.image;
+const tc = document.createElement('canvas'); tc.width = SIZE; tc.height = SIZE;
+const tx = tc.getContext('2d', { willReadFrequently: true });
+tx.drawImage(img, 0, 0, SIZE, SIZE);
+const TEX = tx.getImageData(0, 0, SIZE, SIZE).data;
+
+const flipY = mesh.material.map.flipY;
+function texelAt(u, vv) {
+  let x = Math.round(u * (SIZE - 1));
+  let y = Math.round((flipY ? 1 - vv : vv) * (SIZE - 1));
+  x = Math.max(0, Math.min(SIZE - 1, x)); y = Math.max(0, Math.min(SIZE - 1, y));
+  const o = (y * SIZE + x) * 4;
+  return [TEX[o], TEX[o + 1], TEX[o + 2]];
+}
+
+// --- geometry ---------------------------------------------------------------
+const geo = mesh.geometry;
+const uv = geo.attributes.uv;
+const nVerts = geo.attributes.position.count;
+const index = geo.index.array;
+const nTris = index.length / 3;
+
+const P = new Float32Array(nVerts * 3);
+const tmp = new THREE.Vector3();
+for (let i = 0; i < nVerts; i++) {
+  mesh.getVertexPosition(i, tmp); tmp.applyMatrix4(mesh.matrixWorld);
+  P[i * 3] = tmp.x; P[i * 3 + 1] = tmp.y; P[i * 3 + 2] = tmp.z;
+}
+
+// --- colour predicates ------------------------------------------------------
+const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+// The cover is a bright amber; the suede jacket is a darker, redder brown.
+// Green/red ratio plus a brightness floor separates them cleanly.
+function isYellow(c) {
+  const [r, g, b] = c;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (mx < 150) return false;
+  const sat = (mx - mn) / mx;
+  return sat > 0.5 && r > 150 && g > r * 0.62 && b < g * 0.62;
+}
+// The dark-red bleed on the jeans: dark, but with a clear red cast.
+function isRedBleed(c) {
+  const [r, g, b] = c;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (mx > 120 || mx < 12) return false;
+  const sat = (mx - mn) / mx;
+  return sat > 0.34 && r === mx && r > g * 1.25;
+}
+
+// --- per-triangle sampling --------------------------------------------------
+function triSamples(t) {
+  const a = index[t * 3], b = index[t * 3 + 1], c = index[t * 3 + 2];
+  const us = [uv.getX(a), uv.getX(b), uv.getX(c)];
+  const vs = [uv.getY(a), uv.getY(b), uv.getY(c)];
+  const pts = [[us[0], vs[0]], [us[1], vs[1]], [us[2], vs[2]],
+    [(us[0] + us[1] + us[2]) / 3, (vs[0] + vs[1] + vs[2]) / 3]];
+  // pull the corner samples slightly toward the centroid: avoids seam texels
+  for (let i = 0; i < 3; i++) {
+    pts[i] = [pts[i][0] * 0.72 + pts[3][0] * 0.28, pts[i][1] * 0.72 + pts[3][1] * 0.28];
+  }
+  return { a, b, c, us, vs, cols: pts.map((p) => texelAt(p[0], p[1])) };
+}
+
+const triY = new Float32Array(nTris);   // mean rest-pose height
+const triZ = new Float32Array(nTris);
+const isBook = new Uint8Array(nTris);
+const seed = new Uint8Array(nTris);
+const isDark = new Uint8Array(nTris);
+const isNeutralDark = new Uint8Array(nTris);  // black tee, not shadowed suede
+const isLeg = new Uint8Array(nTris);
+const redLeg = new Uint8Array(nTris);
+const tris = new Array(nTris);
+
+for (let t = 0; t < nTris; t++) {
+  const s = triSamples(t); tris[t] = s;
+  triY[t] = (P[s.a * 3 + 1] + P[s.b * 3 + 1] + P[s.c * 3 + 1]) / 3;
+  triZ[t] = (P[s.a * 3 + 2] + P[s.b * 3 + 2] + P[s.c * 3 + 2]) / 3;
+  const yellowVotes = s.cols.filter(isYellow).length;
+  const darkVotes = s.cols.filter((c) => lum(c) < 85).length;
+  // The book sits on the front of the torso, between waist and chest.
+  // Seed only where the book physically is: centred, chest-to-waist, front surface.
+  const inBookZone = Math.abs((P[s.a * 3] + P[s.b * 3] + P[s.c * 3]) / 3) < 0.13
+    && triY[t] > 0.93 && triY[t] < 1.36 && triZ[t] > 0.03;
+  isBook[t] = yellowVotes >= 2 && inBookZone ? 1 : 0;
+  seed[t] = isBook[t];
+  isDark[t] = darkVotes >= 3 ? 1 : 0;
+  // Shadowed suede is dark too, but it keeps a strong brown cast. Only
+  // near-neutral darks are the tee, and only those are safe to repaint.
+  const neutralVotes = s.cols.filter((c) => {
+    const mx = Math.max(c[0], c[1], c[2]), mn = Math.min(c[0], c[1], c[2]);
+    return mx < 95 && (mx === 0 || (mx - mn) / mx < 0.34);
+  }).length;
+  isNeutralDark[t] = neutralVotes >= 3 ? 1 : 0;
+  isLeg[t] = triY[t] < 0.88 ? 1 : 0;  // strictly below the jacket hem
+  redLeg[t] = isLeg[t] && s.cols.filter(isRedBleed).length >= 2 ? 1 : 0;
+}
+
+// --- the book's 3D footprint, from the yellow seeds alone --------------------
+// Graph dilation followed dark jacket shadow off the book; a 3D box does not.
+const triC = new Float32Array(nTris * 3);
+for (let t = 0; t < nTris; t++) {
+  const s = tris[t];
+  triC[t * 3] = (P[s.a * 3] + P[s.b * 3] + P[s.c * 3]) / 3;
+  triC[t * 3 + 1] = triY[t];
+  triC[t * 3 + 2] = triZ[t];
+}
+let bx0 = 9, bx1 = -9, by0 = 9, by1 = -9;
+for (let t = 0; t < nTris; t++) {
+  if (!isBook[t]) continue;
+  bx0 = Math.min(bx0, triC[t * 3]); bx1 = Math.max(bx1, triC[t * 3]);
+  by0 = Math.min(by0, triY[t]);     by1 = Math.max(by1, triY[t]);
+}
+// Trim outliers, then pad: the cover's dark type and drop shadow ring the yellow.
+// Asymmetric padding: the cover's lower half sits in shadow behind his hands,
+// so the yellow seeds stop short of the real bottom edge.
+const PADX = +(q.get('padx') ?? 0.015);
+// The cover's core, safely clear of the jacket panels on either side.
+const inner = { x0: bx0 * 0.85, x1: bx1 * 0.85, y0: by0, y1: by1 };
+const box = { x0: bx0 - PADX, x1: bx1 + PADX, y0: by0 - 0.07, y1: by1 + 0.05 };
+// A second, much smaller box for the strand of cover left between his
+// fingertips. Narrow enough that it cannot reach the jacket panels.
+const strand = { x0: -0.06, x1: 0.06, y0: 0.915, y1: 0.985 };
+for (let t = 0; t < nTris; t++) {
+  if (isBook[t]) continue;
+  const x = triC[t * 3], y = triY[t], z = triZ[t];
+  const inMain = x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
+  const inStrand = x >= strand.x0 && x <= strand.x1 && y >= strand.y0 && y <= strand.y1;
+  const inInner = x >= inner.x0 && x <= inner.x1 && y >= inner.y0 && y <= inner.y1;
+  if ((!inMain && !inStrand) || z < 0.0) continue;
+  // Two tiers. Deep inside the cover, anything dark is the cover's printed
+  // type, so take it all. Out at the padded edges — where the jacket panels
+  // are — only near-neutral darks (the tee) and leftover amber qualify;
+  // taking every dark texel out there notches the suede.
+  const dark = inInner ? isDark[t] : isNeutralDark[t];
+  if (dark || tris[t].cols.filter(isYellow).length >= 1) isBook[t] = 1;
+}
+
+// --- rasterise masks into UV space -----------------------------------------
+function rasterise(pred, pad, colourOf) {
+  const c = document.createElement('canvas'); c.width = SIZE; c.height = SIZE;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, SIZE, SIZE);
+  g.fillStyle = '#fff'; g.strokeStyle = '#fff'; g.lineWidth = pad; g.lineJoin = 'round';
+  for (let t = 0; t < nTris; t++) {
+    if (!pred(t)) continue;
+    if (colourOf) { const col = colourOf(t); g.fillStyle = col; g.strokeStyle = col; }
+    const s = tris[t];
+    g.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const x = s.us[i] * SIZE;
+      const y = (flipY ? 1 - s.vs[i] : s.vs[i]) * SIZE;
+      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.closePath(); g.fill(); if (pad > 0) g.stroke();
+  }
+  return c.toDataURL('image/png');
+}
+
+// Every triangle inside the book's 3D box, whatever its colour: the sweep zone
+// for leftover cover amber that the dark/yellow tests missed.
+const inBox = (t) => {
+  const x = triC[t * 3], y = triY[t], z = triZ[t];
+  return x >= box.x0 - 0.02 && x <= box.x1 + 0.02 && y >= box.y0 - 0.03 && y <= box.y1 + 0.03 && z > -0.02;
+};
+// --- what the tee actually looks like around the book ------------------------
+// A flat median fill reads as a printed rectangle. Instead each covered
+// triangle takes the mean colour of the nearest genuine tee triangles in 3D, so
+// the patch inherits the shirt's real top-to-bottom shading.
+const isTeeRef = new Uint8Array(nTris);
+for (let t = 0; t < nTris; t++) {
+  if (isBook[t] || !isDark[t] || triZ[t] < 0.0) continue;
+  if (triY[t] < 0.93 || triY[t] > 1.50) continue;
+  const c = tris[t].cols[3];
+  const mx = Math.max(c[0], c[1], c[2]), mn = Math.min(c[0], c[1], c[2]);
+  if (mx > 95 || (mx > 0 && (mx - mn) / mx > 0.34)) continue;   // reject suede
+  isTeeRef[t] = 1;
+}
+const refIdx = [];
+for (let t = 0; t < nTris; t++) if (isTeeRef[t]) refIdx.push(t);
+const fillColour = new Map();
+const K = 12;
+for (let t = 0; t < nTris; t++) {
+  if (!isBook[t]) continue;
+  const x = triC[t * 3], y = triY[t], z = triZ[t];
+  const best = [];
+  for (const r of refIdx) {
+    const d = (triC[r * 3] - x) ** 2 + (triY[r] - y) ** 2 + (triZ[r] - z) ** 2;
+    if (best.length < K) { best.push([d, r]); if (best.length === K) best.sort((a, b) => a[0] - b[0]); }
+    else if (d < best[K - 1][0]) { best[K - 1] = [d, r]; best.sort((a, b) => a[0] - b[0]); }
+  }
+  let r = 0, g = 0, b = 0, n = 0;
+  for (const [, ri] of best) { const c = tris[ri].cols[3]; r += c[0]; g += c[1]; b += c[2]; n++; }
+  fillColour.set(t, n ? `rgb(${Math.round(r / n)},${Math.round(g / n)},${Math.round(b / n)})` : 'rgb(38,36,38)');
+}
+
+window.__masks = {
+  book: rasterise((t) => isBook[t], 3),
+  bookfill: rasterise((t) => isBook[t], 3, (t) => fillColour.get(t)),
+  bookzone: rasterise(inBox, 4),
+  redleg: rasterise((t) => redLeg[t], 3),
+  leg: rasterise((t) => isLeg[t], 2),
+  // shirt reference: dark torso-front triangles just outside the book
+  shirt: rasterise((t) => isDark[t] && !isBook[t] && triY[t] > 0.95 && triY[t] < 1.45 && triZ[t] > 0.0, 0),
+};
+window.__stats = {
+  nTris, book: isBook.reduce((a, b) => a + b, 0), redLeg: redLeg.reduce((a, b) => a + b, 0),
+  dark: isDark.reduce((a, b) => a + b, 0), leg: isLeg.reduce((a, b) => a + b, 0), flipY,
+  teeRefs: refIdx.length,
+  bookBox: { x: [+bx0.toFixed(3), +bx1.toFixed(3)], y: [+by0.toFixed(3), +by1.toFixed(3)] },
+  seedColour: (() => { let r=0,g=0,b=0,n=0; for (let t=0;t<nTris;t++){ if(!seed[t])continue; for(const c of tris[t].cols){r+=c[0];g+=c[1];b+=c[2];n++;} } return n?[Math.round(r/n),Math.round(g/n),Math.round(b/n),n]:null; })(),
+};
+window.__ready = true;
+</script>
