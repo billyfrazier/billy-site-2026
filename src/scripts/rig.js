@@ -36,8 +36,6 @@ const HANG = R([-0.13, -0.99, 0.04], [-0.08, -0.98, 0.18]);
 // has the palms facing out, a person at rest has them facing the thigh.
 // ?twist= tunes it while a new model is calibrated.
 const HAND_TWIST = parseFloat(new URLSearchParams(location.search).get('twist') ?? '-0.8');
-// How far the feet stand apart: the legs are aimed a little outward.
-const LEG_SPREAD = parseFloat(new URLSearchParams(location.search).get('spread') ?? '0.12');
 export const POSES = {
   hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0, twist: HAND_TWIST },
   // Both hands out front under a laptop, eyes on the screen.
@@ -150,10 +148,6 @@ export function createRig(root) {
     bone.quaternion.copy(rest.get(bone).q).multiply(_r);
     if (twist) bone.quaternion.multiply(_t.setFromAxisAngle(_c, twist)); // about its own length
   }
-  const LEGS = {
-    right: [[bones.RightUpLeg, bones.RightLeg], [bones.RightLeg, bones.RightFoot]],
-    left: [[bones.LeftUpLeg, bones.LeftLeg], [bones.LeftLeg, bones.LeftFoot]],
-  };
 
   // --- pose blending -----------------------------------------------------------
   let poseFrom = POSES.hang, poseTo = POSES.hang, poseK = 1;
@@ -335,12 +329,6 @@ export function createRig(root) {
       aimBone(ARMS[side].up[0], ARMS[side].up[1], [c.up.x, c.up.y, c.up.z]);
       // the twist mirrors: a right forearm rolled in is a left one rolled the other way
       aimBone(ARMS[side].fore[0], ARMS[side].fore[1], [c.fore.x, c.fore.y, c.fore.z], side === 'right' ? twist : -twist);
-    }
-    // Feet a little apart: thigh and shin aimed outward by the same amount, so
-    // the leg stays straight.
-    for (const side of ['right', 'left']) {
-      const x = side === 'right' ? -LEG_SPREAD : LEG_SPREAD;
-      for (const [bone, child] of LEGS[side]) if (bone && child) aimBone(bone, child, [x, -1, 0]);
     }
   }
 

@@ -153,9 +153,8 @@ composed onto the captured rest pose each frame:
   each forearm plus a head pitch/roll, and a forearm `twist` (radians about
   the bone's own length). At rest the twist is −0.8: the A-pose scan has the
   palms facing out, this rolls them in to the thighs. `?twist=` tunes it.
-- **legs** — thigh and shin aimed 0.12 outward so the feet stand a little
-  apart (`?spread=`). Chips blend to the matching pose
-  (~0.4s, from wherever he currently is); reset blends back to `hang`. While
+  Chips blend to the matching pose (~0.4s, from wherever he currently is);
+  reset blends back to `hang`. While
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across
   the page — so the pose never freezes.
