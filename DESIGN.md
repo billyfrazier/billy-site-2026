@@ -71,21 +71,24 @@ bust. It has a real humanoid skeleton, so the cursor drives its `Head` bone
 directly instead of the runtime two-bone hack the unrigged bust needed.
 `?model=bust` still loads the old one.
 
-Selecting a chip puts something in his hands and poses him around it:
-"Learn how I can help" → a MacBook Pro held open in both hands, eyes on the
-screen (the viewer sees the back of the lid, as they would); "Buy my book" →
-the book held at the chest, cover to the viewer, head down into it;
+Selecting a chip puts something in his hands and poses him around it — head
+level and on the viewer throughout, not down at the object (Billy's call):
+"Learn how I can help" → nothing in hand, he just talks to you (the laptop
+was dropped 2026-09-03); "Buy my book" → the book held at the chest, cover to
+the viewer;
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
 "Drop a quick line" → an iPhone at his right ear, head tilted to it, small
 talking nods; "Grab coffee with me" → a to-go cup in his right hand, with a
 sip every ten seconds or so. Reset puts them down and he shrugs. All primitives except the
 cover art. Two-handed props (laptop, book) sit *between the hands* — centred on their
 midpoint, x-axis along right→left hand — so they are in the hands wherever a
-pose lands them. One-handed props anchor to a hand bone with an offset in the
-figure's frame at rest and ride that bone's rotation *since rest*, overlapping
-the palm (there are no finger bones; that is what "held" looks like), so the
-phone stays on the ear as he turns and the pencil stays in the hand as it
-moves (`rig.anchor`). Real sizes in metres, scaled with the figure.
+pose lands them. One-handed props anchor to a hand bone, walk out from the wrist along the
+forearm's line toward the fingers, and orient in the figure's frame (the
+wrist's twist is whatever the scan gave it). There are no finger bones and the
+hands are flat, so every object sits a few centimetres *in front of* the palm
+(+z, toward the camera): the fingers then read as wrapped behind it, where an
+object through the palm read as clipping. Real sizes in metres, scaled with
+the figure.
 
 Framing: full body on desktop; phones crop to the upper body and cap the text
 sheet at 62dvh. Tunables: `?busty=` `?busts=` `?moby=` `?mobs=`; `?pose=laptop`
@@ -147,7 +150,11 @@ composed onto the captured rest pose each frame:
 - **idle gaze drift** — left alone for ~2.5s he starts glancing off and back
   instead of staring
 - **poses** — `POSES` in rig.js: per pose, a direction for each upper arm and
-  each forearm plus a head pitch/roll. Chips blend to the matching pose
+  each forearm plus a head pitch/roll, and a forearm `twist` (radians about
+  the bone's own length). At rest the twist is −0.8: the A-pose scan has the
+  palms facing out, this rolls them in to the thighs. `?twist=` tunes it.
+- **legs** — thigh and shin aimed 0.12 outward so the feet stand a little
+  apart (`?spread=`). Chips blend to the matching pose
   (~0.4s, from wherever he currently is); reset blends back to `hang`. While
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across

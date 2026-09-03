@@ -125,8 +125,10 @@ function buildPhone() {
 // (metres) and an orientation there (euler, radians). There are no finger
 // bones, so an object overlapping the palm is what "held" looks like.
 const ITEMS = {
-  laptop: [{ build: buildLaptop, anchor: 'hands', offset: [0, -0.02, 0.02], rot: [0.06, 0, 0] }],
-  book: [{ build: buildBook, anchor: 'hands', offset: [0, 0.03, 0.0], rot: [-0.45, 0, 0] }],
+  // Offsets lean toward the camera (+z): the hands are flat, so an object a
+  // few cm in front of the palm reads as gripped, one through it as clipped.
+  laptop: [{ build: buildLaptop, anchor: 'hands', offset: [0, -0.02, 0.045], rot: [0.06, 0, 0] }],
+  book: [{ build: buildBook, anchor: 'hands', offset: [0, 0.03, 0.03], rot: [-0.45, 0, 0] }],
   // Hand bones sit at the wrist; `along` walks out toward the fingers along
   // the forearm's direction (metres). `fixedRot` orients in the figure's frame
   // rather than the wrist's — the wrist's twist is whatever the scan gave it.
@@ -135,9 +137,9 @@ const ITEMS = {
     // tip (−y) down and forward into the page
     { build: buildPencil, anchor: 'RightHand', along: 0.07, offset: [0, 0.03, 0.0], rot: [0.55, 0, -0.45], fixedRot: true },
   ],
-  coffee: [{ build: buildCoffee, anchor: 'RightHand', along: 0.06, offset: [0, 0.02, 0.01], rot: [0, 0, 0], fixedRot: true }],
+  coffee: [{ build: buildCoffee, anchor: 'RightHand', along: 0.05, offset: [-0.012, 0.015, 0.045], rot: [0, 0, 0], fixedRot: true }],
   // His right is −x: the phone sits in the palm, flat against the ear.
-  phone: [{ build: buildPhone, anchor: 'RightHand', along: 0.05, offset: [-0.02, 0.01, 0.0], rot: [0.10, 0.55, -0.20], fixedRot: true }],
+  phone: [{ build: buildPhone, anchor: 'RightHand', along: 0.05, offset: [-0.02, 0.01, 0.02], rot: [0.10, 0.55, -0.20], fixedRot: true }],
 };
 
 export function createProps({ scene, renderer }) {

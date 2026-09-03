@@ -249,7 +249,8 @@ export function initScene({ stage, motionChip, onProgress }) {
 
   // Which reply puts what in his hands. The pose of the same name in rig.js
   // brings his arms and head to it.
-  const PROP_FOR = { help: 'laptop', book: 'book', substack: 'notebook', contact: 'phone', coffee: 'coffee' };
+  // "help" has no object: he just talks to you.
+  const PROP_FOR = { book: 'book', substack: 'notebook', contact: 'phone', coffee: 'coffee' };
 
   function wireProps() {
     props = createProps({ scene, renderer });
@@ -259,7 +260,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       if (item) props.setItem(item);      // swap the object while it is hidden
       swapTarget = item ? 1 : 0;
       rig?.setPose(item ?? 'hang');       // arms and head go to the object (or back)
-      if (!item) rig?.trigger('shrug');   // reset: back to nothing in particular
+      if (e.detail.key === 'intro') rig?.trigger('shrug');   // reset: back to nothing in particular
       if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
     });
     // Dev: ?pose=laptop|book|notebook|phone lands him in that pose on load.

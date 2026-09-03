@@ -32,25 +32,31 @@ const L = ({ up, fore }) => ({ up: [-up[0], up[1], up[2]], fore: [-fore[0], fore
 // Poses: where the arms go and how the head sits while he holds something.
 // Tuned by looking at him hold each prop; the prop positions live in props.js.
 const HANG = R([-0.13, -0.99, 0.04], [-0.08, -0.98, 0.18]);
+// Twist of each forearm about its own length, in radians: the A-pose scan
+// has the palms facing out, a person at rest has them facing the thigh.
+// ?twist= tunes it while a new model is calibrated.
+const HAND_TWIST = parseFloat(new URLSearchParams(location.search).get('twist') ?? '-0.8');
+// How far the feet stand apart: the legs are aimed a little outward.
+const LEG_SPREAD = parseFloat(new URLSearchParams(location.search).get('spread') ?? '0.12');
 export const POSES = {
-  hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0 },
+  hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0, twist: HAND_TWIST },
   // Both hands out front under a laptop, eyes on the screen.
   laptop: {
     right: R([-0.34, -0.86, 0.38], [0.22, -0.18, 0.96]),
     left: L(R([-0.34, -0.86, 0.38], [0.22, -0.18, 0.96])),
-    headPitch: -0.42, headRoll: 0,
+    headPitch: 0, headRoll: 0,
   },
   // Book held up at the chest, head down into it.
   book: {
     right: R([-0.30, -0.84, 0.45], [0.46, 0.34, 0.82]),
     left: L(R([-0.30, -0.84, 0.45], [0.46, 0.34, 0.82])),
-    headPitch: -0.48, headRoll: 0.04,
+    headPitch: 0, headRoll: 0.04,
   },
   // Left hand carries the notebook; right hand writes in it.
   notebook: {
     right: R([-0.28, -0.84, 0.46], [0.62, 0.32, 0.72]),
     left: L(R([-0.34, -0.86, 0.38], [0.45, 0.22, 0.87])),
-    headPitch: -0.50, headRoll: -0.05,
+    headPitch: 0, headRoll: -0.05,
   },
   // To-go cup held up at the chest in the right hand, left arm hanging.
   coffee: {
@@ -133,7 +139,8 @@ export function createRig(root) {
   const rootQ = new THREE.Quaternion();
   const _pq = new THREE.Quaternion(), _bw = new THREE.Quaternion(), _r = new THREE.Quaternion();
   const _c = new THREE.Vector3(), _w = new THREE.Vector3();
-  function aimBone(bone, child, dir) {
+  const _t = new THREE.Quaternion();
+  function aimBone(bone, child, dir, twist = 0) {
     bone.parent.updateWorldMatrix(true, false);
     bone.parent.getWorldQuaternion(_pq);
     _bw.copy(_pq).multiply(rest.get(bone).q).invert();     // world → bone's rest-local
@@ -141,7 +148,12 @@ export function createRig(root) {
     _c.copy(child.position).normalize();
     _r.setFromUnitVectors(_c, _w);
     bone.quaternion.copy(rest.get(bone).q).multiply(_r);
+    if (twist) bone.quaternion.multiply(_t.setFromAxisAngle(_c, twist)); // about its own length
   }
+  const LEGS = {
+    right: [[bones.RightUpLeg, bones.RightLeg], [bones.RightLeg, bones.RightFoot]],
+    left: [[bones.LeftUpLeg, bones.LeftLeg], [bones.LeftLeg, bones.LeftFoot]],
+  };
 
   // --- pose blending -----------------------------------------------------------
   let poseFrom = POSES.hang, poseTo = POSES.hang, poseK = 1;
@@ -173,6 +185,7 @@ export function createRig(root) {
       left: { up: dir('left', 'up'), fore: dir('left', 'fore') },
       headPitch: mix([poseFrom.headPitch], [poseTo.headPitch], 0),
       headRoll: mix([poseFrom.headRoll], [poseTo.headRoll], 0),
+      twist: mix([poseFrom.twist ?? 0], [poseTo.twist ?? 0], 0),
     };
   }
 
@@ -316,10 +329,18 @@ export function createRig(root) {
       e.set(o.x, o.y, o.z, 'YXZ');
       b.quaternion.copy(rest.get(b).q).multiply(q.setFromEuler(e));
     }
+    const twist = (poseFrom.twist ?? 0) + ((poseTo.twist ?? 0) - (poseFrom.twist ?? 0)) * pk;
     for (const side of ['right', 'left']) {
       const c = cur[side];
       aimBone(ARMS[side].up[0], ARMS[side].up[1], [c.up.x, c.up.y, c.up.z]);
-      aimBone(ARMS[side].fore[0], ARMS[side].fore[1], [c.fore.x, c.fore.y, c.fore.z]);
+      // the twist mirrors: a right forearm rolled in is a left one rolled the other way
+      aimBone(ARMS[side].fore[0], ARMS[side].fore[1], [c.fore.x, c.fore.y, c.fore.z], side === 'right' ? twist : -twist);
+    }
+    // Feet a little apart: thigh and shin aimed outward by the same amount, so
+    // the leg stays straight.
+    for (const side of ['right', 'left']) {
+      const x = side === 'right' ? -LEG_SPREAD : LEG_SPREAD;
+      for (const [bone, child] of LEGS[side]) if (bone && child) aimBone(bone, child, [x, -1, 0]);
     }
   }
 

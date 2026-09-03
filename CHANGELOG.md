@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-03 — At rest the hands turn in to his thighs (were palms-out) and the feet stand a little apart. He looks at you while holding things, not down at them. "Learn how I can help" no longer hands him a laptop. Held objects sit in front of the palm so the fingers read as wrapped rather than through the object.
 - 2026-09-02 — No more waving. "Grab coffee with me" is now a reply chip like the others: he holds a to-go cup (and sips), the headline reads "Want to chat while we enable my coffee addiction?", and a black "Book coffee" CTA goes to Calendly.
 - 2026-09-02 — Hamburger removed for now; "Book coffee with me" chip links to Calendly (new tab); on phones the text sheet is a fixed height and scrolls inside instead of growing over the figure.
 - 2026-09-02 — Arms free of the torso: the scan's auto-rig weights gave the upper arm a wedge of the jacket's side, so it rose with the arm; repaired by rule (tools/model/fixweights). Wave keeps the elbow under shoulder height so the armpit doesn't web. Props now sit in the hands — two-handed ones centred between them — instead of near them.
