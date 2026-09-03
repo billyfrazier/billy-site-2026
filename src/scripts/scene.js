@@ -264,7 +264,6 @@ export function initScene({ stage, motionChip, onProgress }) {
       swapTarget = item ? 1 : 0;
       if (PROP_MODE === 'hold') rig?.setPose(item ?? 'hang');   // arms and head go to the object (or back)
       else if (item) rig?.trigger('glance');                     // look up at what just appeared
-      if (e.detail.key === 'intro') rig?.trigger('shrug');   // reset: back to nothing in particular
       if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
     });
     // Dev: ?pose=laptop|book|notebook|phone lands him in that pose on load.

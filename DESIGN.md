@@ -7,7 +7,8 @@ the four chips.
 
 ## Tokens ([src/styles/global.css](src/styles/global.css))
 - `--color` #000 on `--color-bg` #fff; accent `#312DFB` (focus rings, progress
-  tick, hovers ONLY).
+  tick, hovers ONLY). Reply chips hover/active to #e6e6e6; only the CTA chips
+  (`.chip--cta`) are black, at rest and hovered.
 - Studio backdrop: CSS radial gradient `#f2f2f2 → #d9d9d9` on `.stage`; the
   WebGL canvas renders transparent on top.
 - Type: 17px base, headline 1.733rem/700. Font stack intentionally starts with
@@ -28,7 +29,10 @@ bar (blue while the GLB loads, black for typing progress). Bottom-right slot:
 "Enable motion" chip (iOS tilt permission) — the reference's sound controls
 live there; we ship no sound. Mobile ≤720px: the text moves into a solid white sheet pinned to the bottom
 with a rounded top edge (no translucent scrim over the face). The sheet is a
-fixed 62dvh and scrolls inside — a long reply never pushes it up over him.
+fixed 54svh (svh, not dvh: Safari's collapsing toolbar would grow it as you
+scroll) and scrolls inside — a long reply never pushes it up over him. A
+sticky white gradient (`.col::after`) fades overflowing content out above the
+fixed reset/motion controls instead of letting it run under them.
 The bust is framed in the clear space above it, the reset button becomes a filled black circle over
 the sheet, and the progress bar becomes a hairline on the bottom edge — matching
 the LISA reference.
@@ -79,9 +83,11 @@ twice). "Learn how I can help" has no object (the laptop was dropped
 2026-09-03); "Buy my book" → the book, cover out;
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
 "Subscribe" → the notebook with the pencil across it; "Drop a quick line" →
-the iPhone; "Grab coffee with me" → the to-go cup. Floating items are drawn
-at 1.6× the figure's scale — real size is too small to read up there. Reset
-clears it and he shrugs. In hold mode the poses (rig `POSES`) apply: cup and
+the iPhone (a modelled one: titanium frame, drawn screen, camera plateau on
+the back — it spins, so the back shows); "Grab coffee with me" → the to-go cup. Floating items are drawn
+at 1.25× the figure's scale with 14 cm of air above the crown. Reset clears
+it and he stays still (the shrug went 2026-09-03 — the reset should not move
+him). In hold mode the poses (rig `POSES`) apply: cup and
 phone in the right hand with a sip / talking nods, notebook in the left with
 the pencil scribbling, book at the chest. All primitives except the
 cover art. Two-handed props (laptop, book) sit *between the hands* — centred on their
@@ -159,8 +165,8 @@ composed onto the captured rest pose each frame:
   the bone's own length). At rest the twist is −0.8: the A-pose scan has the
   palms facing out, this rolls them in to the thighs. `?twist=` tunes it.
   Each pose also sets a finger `curl` (radians on the knuckle bones that
-  tools/model/fingers adds — the scan has none): 0.55 at rest, 1.0 around
-  the cup. `?curl=` tunes the rest value. Chips blend to the matching pose
+  tools/model/fingers adds — the scan has none): 1.15 at rest, a loose
+  action-figure fist, 1.0 around the cup in hold mode. `?curl=` tunes the rest value. Chips blend to the matching pose
   (~0.4s, from wherever he currently is); reset blends back to `hang`. While
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across

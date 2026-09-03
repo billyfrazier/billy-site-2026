@@ -107,14 +107,108 @@ function buildCoffee() {
   return g;
 }
 
-// iPhone, screen on +z.
+// iPhone 15 Pro proportions: 70.6 × 146.6 × 8.25 mm, 12.5 mm corners. Screen
+// on +z. It spins when floated, so the back — camera plateau, three lenses,
+// flash — matters as much as the front. Screen content is drawn to a canvas:
+// wallpaper, 9:41, the Dynamic Island, an app grid and the dock.
+function roundedRect(w, h, r) {
+  const sh = new THREE.Shape();
+  const x = -w / 2, y = -h / 2;
+  sh.moveTo(x + r, y);
+  sh.lineTo(x + w - r, y); sh.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false);
+  sh.lineTo(x + w, y + h - r); sh.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2, false);
+  sh.lineTo(x + r, y + h); sh.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI, false);
+  sh.lineTo(x, y + r); sh.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5, false);
+  return sh;
+}
+function slab(w, h, d, r, mat, bevel = 0) {
+  const geo = new THREE.ExtrudeGeometry(roundedRect(w - 2 * bevel, h - 2 * bevel, Math.max(0.001, r - bevel)), {
+    depth: d - 2 * bevel, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 12,
+  });
+  geo.translate(0, 0, -(d - 2 * bevel) / 2);
+  return new THREE.Mesh(geo, mat);
+}
+function drawScreen() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 532;
+  const g = c.getContext('2d');
+  // wallpaper: deep blue to violet with two soft glows
+  const bg = g.createLinearGradient(0, 0, 0, 532);
+  bg.addColorStop(0, '#0e1a3a'); bg.addColorStop(0.55, '#2a1f5c'); bg.addColorStop(1, '#5a2a63');
+  g.fillStyle = bg; g.fillRect(0, 0, 256, 532);
+  for (const [x, y, r, col] of [[70, 170, 150, 'rgba(90,120,255,0.35)'], [210, 380, 170, 'rgba(255,110,150,0.30)']]) {
+    const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, 256, 532);
+  }
+  // status bar + Dynamic Island
+  g.fillStyle = '#fff'; g.font = 'bold 15px -apple-system, Helvetica, Arial'; g.textBaseline = 'middle';
+  g.fillText('9:41', 24, 22);
+  g.textAlign = 'right'; g.font = 'bold 12px Helvetica, Arial'; g.fillText('●●● ▲ ▮', 236, 22); g.textAlign = 'left';
+  g.fillStyle = '#000'; g.beginPath(); g.roundRect(88, 12, 80, 22, 11); g.fill();
+  // app grid: 4 × 5 rounded squares
+  const cols = ['#34c759', '#ff9500', '#007aff', '#ff3b30', '#af52de', '#5ac8fa', '#ffcc00', '#8e8e93', '#30b0c7', '#ff2d55', '#a2845e', '#64d2ff', '#32ade6', '#ff6482', '#30d158', '#bf5af2', '#0a84ff', '#ffd60a', '#ac8e68', '#ff453a'];
+  let i = 0;
+  for (let row = 0; row < 5; row++) for (let col = 0; col < 4; col++) {
+    g.fillStyle = cols[i++ % cols.length];
+    g.beginPath(); g.roundRect(22 + col * 56, 62 + row * 68, 42, 42, 11); g.fill();
+  }
+  // dock
+  g.fillStyle = 'rgba(255,255,255,0.22)'; g.beginPath(); g.roundRect(16, 448, 224, 66, 22); g.fill();
+  for (let col = 0; col < 4; col++) {
+    g.fillStyle = ['#34c759', '#007aff', '#ff9500', '#5ac8fa'][col];
+    g.beginPath(); g.roundRect(28 + col * 54, 460, 42, 42, 11); g.fill();
+  }
+  // home indicator
+  g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.roundRect(88, 520, 80, 5, 3); g.fill();
+  // rounded screen corners: punch the corners out so the glass shows through
+  g.globalCompositeOperation = 'destination-in';
+  g.fillStyle = '#000'; g.beginPath(); g.roundRect(0, 0, 256, 532, 34); g.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
 function buildPhone() {
   const g = new THREE.Group();
-  const W = 0.0716, H = 0.1476, D = 0.0078;
-  g.add(box(W, H, D, lambert(INK)));
-  const screen = box(W * 0.9, H * 0.94, 0.0006, new THREE.MeshBasicMaterial({ color: 0x1c2230 }));
-  screen.position.z = D / 2 + 0.0003;
+  const W = 0.0706, H = 0.1466, D = 0.00825, R = 0.0125;
+  const titanium = new THREE.MeshStandardMaterial({ color: 0x9a9a9e, metalness: 0.75, roughness: 0.32 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x0b0b0d, metalness: 0.2, roughness: 0.15 });
+  const backGlass = new THREE.MeshStandardMaterial({ color: 0x3a3b3f, metalness: 0.3, roughness: 0.45 });
+  // frame, with a soft edge
+  g.add(slab(W, H, D, R, titanium, 0.0006));
+  // front glass, then the screen, sitting just proud of the frame
+  const front = slab(W - 0.002, H - 0.002, 0.0008, R - 0.001, glass);
+  front.position.z = D / 2 + 0.0002;
+  g.add(front);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.0045, H - 0.0045),
+    new THREE.MeshBasicMaterial({ map: drawScreen(), transparent: true }));
+  screen.position.z = D / 2 + 0.0007;
   g.add(screen);
+  // back glass
+  const back = slab(W - 0.002, H - 0.002, 0.0008, R - 0.001, backGlass);
+  back.position.z = -D / 2 - 0.0002;
+  g.add(back);
+  // camera plateau (top-left seen from the back = +x here since the back faces −z)
+  const plateau = slab(0.0365, 0.0365, 0.0018, 0.008, new THREE.MeshStandardMaterial({ color: 0x4a4b50, metalness: 0.4, roughness: 0.4 }));
+  plateau.position.set(W / 2 - 0.0225, H / 2 - 0.0225, -D / 2 - 0.0012);
+  g.add(plateau);
+  const lensMat = new THREE.MeshStandardMaterial({ color: 0x101216, metalness: 0.6, roughness: 0.2 });
+  const ringMat = new THREE.MeshStandardMaterial({ color: 0x77787c, metalness: 0.8, roughness: 0.3 });
+  for (const [dx, dy] of [[-0.008, 0.0085], [-0.008, -0.0085], [0.0075, 0.0]]) {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.0016, 24), ringMat);
+    ring.rotation.x = Math.PI / 2; ring.position.set(plateau.position.x + dx, plateau.position.y + dy, -D / 2 - 0.0028);
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.0018, 24), lensMat);
+    lens.rotation.x = Math.PI / 2; lens.position.copy(ring.position); lens.position.z -= 0.0002;
+    g.add(ring, lens);
+  }
+  const flash = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.0006, 16), new THREE.MeshBasicMaterial({ color: 0xf6e9c8 }));
+  flash.rotation.x = Math.PI / 2; flash.position.set(plateau.position.x + 0.0075, plateau.position.y + 0.011, -D / 2 - 0.0022);
+  g.add(flash);
+  // side buttons: action + volume on his left edge (−x), power on the right
+  for (const [x, y, h] of [[-W / 2, 0.041, 0.006], [-W / 2, 0.026, 0.011], [-W / 2, 0.011, 0.011], [W / 2, 0.026, 0.017]]) {
+    const btn = new THREE.Mesh(new THREE.BoxGeometry(0.0012, h, 0.0032), titanium);
+    btn.position.set(x, y, 0);
+    g.add(btn);
+  }
   return g;
 }
 
@@ -158,8 +252,8 @@ const FLOAT_ITEMS = {
   phone: () => buildPhone(),
   coffee: () => buildCoffee(),
 };
-const FLOAT_SCALE = 1.6;   // × the figure's scale — real size is too small to read up there
-const FLOAT_GAP = 0.05;    // metres of clear air above the crown
+const FLOAT_SCALE = 1.25;  // × the figure's scale — real size is too small to read up there
+const FLOAT_GAP = 0.14;    // metres of clear air above the crown
 
 export function createProps({ scene, renderer, mode = 'float' }) {
   const root = new THREE.Group();

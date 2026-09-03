@@ -150,13 +150,15 @@ a { color: inherit; text-decoration: none; }
   transition: transform 160ms ease-out, color 160ms ease-out, background-color 160ms ease-out;
   white-space: nowrap;
 }
-.chip:hover, .chip:focus-visible {
-  background: var(--color);
-  color: var(--color-bg);
+.chip:hover, .chip:focus-visible, .chip:active, .chip.is-active {
+  background: #e6e6e6;
   transform: translateY(-1px);
 }
-/* Reply CTAs read as the primary action, so they stay inverted at rest. */
-.chip--cta { background: var(--color); color: var(--color-bg); }
+/* Reply CTAs read as the primary action: black at rest, and they stay black. */
+.chip--cta, .chip--cta:hover, .chip--cta:focus-visible, .chip--cta:active {
+  background: var(--color);
+  color: var(--color-bg);
+}
 @media (prefers-reduced-motion: reduce) {
   .chip, .chip:hover { transform: none; transition: none; }
 }
@@ -234,14 +236,30 @@ a { color: inherit; text-decoration: none; }
     transform: none;
     width: 100%;
     /* A fixed-height sheet: longer replies scroll inside it rather than
-       pushing it up over the figure. 62dvh leaves him room above. */
-    height: 62dvh;
+       pushing it up over the figure. svh, not dvh: Safari's collapsing
+       toolbar would otherwise grow the sheet as you scroll. */
+    height: 54vh;
+    height: 54svh;
     max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
+
     background: var(--color-bg);
     border-radius: 20px 20px 0 0;
     padding: 1.15rem var(--grid-margin) 5rem; /* clears the bottom controls */
+  }
+  /* Overflowing content fades to white above the fixed controls instead of
+     running under them: a sticky gradient riding the bottom of the scroller.
+     The 5rem bottom padding brings the last item clear once scrolled to the end. */
+  .col::after {
+    content: '';
+    display: block;
+    position: sticky;
+    bottom: -5rem;              /* sits in the padding, flush with the sheet's edge */
+    height: 7rem;
+    margin-top: -7rem;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0) 0%, var(--color-bg) 45%);
+    pointer-events: none;
   }
   /* the +50% desktop logo would collide with a prop on a narrow screen */
   .site-header .logo img { height: 1.35rem; }
