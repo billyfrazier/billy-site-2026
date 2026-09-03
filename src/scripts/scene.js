@@ -68,10 +68,6 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.position.set(0.04, parseFloat(q.get('moby') ?? '-0.06'), 0);
       pivot.scale.setScalar(parseFloat(q.get('mobs') ?? '1.0'));
       camera.position.set(0, 0.1, 3.1);
-      props?.setLayout({
-        position: new THREE.Vector3(0.04, 0, 0.25), // x/y re-anchored to the crown each frame
-        scale: parseFloat(q.get('propb') ?? '0.45'),
-      });
     } else {
       // Larger and lower than the raw fit so the shoulders bleed off-screen.
       // Bust and camera share x=0: a dead-on, square perspective — the
@@ -79,10 +75,6 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.position.set(0, parseFloat(q.get('busty') ?? '0.0'), 0);
       pivot.scale.setScalar(parseFloat(q.get('busts') ?? '0.8'));
       camera.position.set(0, 0.1, 2.9);
-      props?.setLayout({
-        position: new THREE.Vector3(0, 0, 0.25), // x/y re-anchored to the crown each frame
-        scale: parseFloat(q.get('propb') ?? '0.5'),
-      });
     }
     camera.lookAt(0, 0.1, 0);
   }
@@ -214,6 +206,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       // is computed in his own frame — adding it would skew his gaze off you.
       rig.setLook(controls.state.yaw, controls.state.pitch);
       rig.update(lastDt, elapsed, idle);
+      props?.update(lastDt, rig);   // held props sit on bones: place them after the pose
     } else if (headBone) {
       // Unrigged bust: only the head follows; shoulders stay still on the pivot.
       // The rest offset counters the head-turn baked into the mesh geometry.
@@ -237,21 +230,7 @@ export function initScene({ stage, motionChip, onProgress }) {
     swapT += (swapTarget - swapT) * (1 - Math.exp(-7 * dt));
     if (Math.abs(swapTarget - swapT) < 0.002) swapT = swapTarget;
     applySwap();
-    anchorProps();
-    props?.update(dt);
     renderOnce();
-  }
-
-  // Props hang a fixed gap above the crown (the rig's `head_end` bone), so they
-  // sit close to him whatever the model's proportions, and ride along when a
-  // reaction moves his head. ?propgap= tunes the clearance.
-  const PROP_GAP = parseFloat(q.get('propgap') ?? '0.03');
-  const _crown = new THREE.Vector3();
-  function anchorProps() {
-    const crown = rig?.bones.head_end;
-    if (!crown || !props) return;
-    crown.getWorldPosition(_crown);
-    props.setAnchor(_crown, PROP_GAP);
   }
 
   function start() {
@@ -268,32 +247,28 @@ export function initScene({ stage, motionChip, onProgress }) {
     document.hidden ? stop() : start();
   });
 
-  // Which reply floats which item above the head, and how he answers it.
-  const PROP_FOR = { help: 'mic', book: 'book', substack: 'envelope', contact: 'bubble' };
-  const GESTURE_FOR = { help: 'present', book: 'nod', substack: 'wave', contact: 'wave' };
+  // Which reply puts what in his hands. The pose of the same name in rig.js
+  // brings his arms and head to it.
+  const PROP_FOR = { help: 'laptop', book: 'book', substack: 'notebook', contact: 'phone' };
 
   function wireProps() {
     props = createProps({ scene, renderer });
     layout(); // re-run so the prop picks up its per-breakpoint placement
     document.addEventListener('bf:reply', (e) => {
       const item = PROP_FOR[e.detail.key];
-      if (item) props.setItem(item);      // swap the icon while it is hidden
+      if (item) props.setItem(item);      // swap the object while it is hidden
       swapTarget = item ? 1 : 0;
-      if (!running) { swapT = swapTarget; applySwap(); anchorProps(); props.update(0); renderOnce(); } // no loop: snap
-      if (!rig) return;
-      if (item) {
-        // Look up at the thing that just appeared, then answer it. The gesture
-        // waits for the glance to peak so the two read as one beat, not two.
-        rig.trigger('glance');
-        clearTimeout(gestureTimer);
-        gestureTimer = setTimeout(() => rig?.trigger(GESTURE_FOR[e.detail.key] ?? 'nod'), 900);
-      } else {
-        clearTimeout(gestureTimer);
-        rig.trigger('shrug');            // reset: back to nothing in particular
-      }
+      rig?.setPose(item ?? 'hang');       // arms and head go to the object (or back)
+      if (!item) rig?.trigger('shrug');   // reset: back to nothing in particular
+      if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
     });
+    // Dev: ?pose=laptop|book|notebook|phone lands him in that pose on load.
+    const dev = q.get('pose');
+    if (dev) {
+      const key = Object.keys(PROP_FOR).find((k) => PROP_FOR[k] === dev);
+      if (key) document.dispatchEvent(new CustomEvent('bf:reply', { detail: { key } }));
+    }
   }
-  let gestureTimer = 0;
 
   // The figure stays; the item above the head fades in and out.
   function applySwap() {
@@ -305,6 +280,9 @@ export function initScene({ stage, motionChip, onProgress }) {
     renderOnce(); // synchronous first frame — never gate visibility on the loop
     canvas.classList.add('is-ready');
     wireProps();
+    // A hello once he's in — also the only place the wave is used now that the
+    // chips put things in his hands instead.
+    if (rig && !reduced && !q.get('pose')) setTimeout(() => rig?.trigger('wave'), 900);
     onProgress?.(1);
     if (!reduced) start();
   }

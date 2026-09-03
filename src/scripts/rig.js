@@ -1,16 +1,17 @@
 // Procedural performance for the rigged figure. Nothing here is a baked clip:
 // every frame composes additive euler offsets on top of the GLB's rest pose —
 // breathing and a weight shift underneath, the cursor look spread up the
-// spine, and one-shot reactions layered on top. That layering is what makes
-// him read as somebody standing there rather than a prop being rotated.
+// spine, a held-object pose, and one-shot reactions layered on top. That
+// layering is what makes him read as somebody standing there rather than a
+// prop being rotated.
 //
 // Axis map, measured against this rig (poke a bone and look — see DESIGN.md):
 //   Head.x  negative = looks up          Head.y positive = turns to his left
 //   Head.z  positive = tilts toward his right shoulder
-//   RightForeArm.x negative = bends the elbow up
-// The upper arms are NOT driven by euler axes: their local axes are tilted, so
-// a single-axis rotation sweeps a cone (RightArm.x swings the arm *behind* him
-// while looking "down" from the front). They are aimed instead — see swingTo.
+// The arms are never driven by euler axes: their local axes are tilted, so a
+// single-axis rotation sweeps a cone (RightArm.x "down" swung the arm behind
+// him). Upper arms AND forearms are aimed at directions in the figure's frame
+// every frame — see aimBone — which is what gives him real elbows.
 import * as THREE from 'three';
 
 // Which joints share the look, and how much each takes. Spreading it down the
@@ -23,22 +24,39 @@ const LOOK_CHAIN = [
   ['Head', 0.49],
 ];
 
-// Where each upper arm points, in the figure's own frame (his right is −x,
-// forward is +z). The generator delivers an A-pose; a person talking to you
-// has their arms hanging, so `hang` is the base and the others are gesture
-// targets a reaction blends toward.
-const ARM_AIMS = {
-  RightArm: {
-    hang: [-0.13, -0.99, 0.04],
-    raise: [-0.76, 0.58, 0.16],     // out and up: the wave
-    present: [-0.55, -0.40, 0.72],  // forward and open
-    lift: [-0.40, -0.90, 0.06],     // a little out: shrug / recoil
+// Directions in the figure's frame: his right is −x, up +y, forward +z.
+// `up` is the upper arm (shoulder → elbow), `fore` the forearm (elbow → wrist).
+const R = (up, fore) => ({ up, fore });
+const L = ({ up, fore }) => ({ up: [-up[0], up[1], up[2]], fore: [-fore[0], fore[1], fore[2]] });
+
+// Poses: where the arms go and how the head sits while he holds something.
+// Tuned by looking at him hold each prop; the prop positions live in props.js.
+const HANG = R([-0.13, -0.99, 0.04], [-0.08, -0.98, 0.18]);
+export const POSES = {
+  hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0 },
+  // Both hands out front under a laptop, eyes on the screen.
+  laptop: {
+    right: R([-0.34, -0.86, 0.38], [0.22, -0.18, 0.96]),
+    left: L(R([-0.34, -0.86, 0.38], [0.22, -0.18, 0.96])),
+    headPitch: -0.42, headRoll: 0,
   },
-  LeftArm: {
-    hang: [0.13, -0.99, 0.04],
-    raise: [0.76, 0.58, 0.16],
-    present: [0.55, -0.40, 0.72],
-    lift: [0.40, -0.90, 0.06],
+  // Book held up at the chest, head down into it.
+  book: {
+    right: R([-0.30, -0.84, 0.45], [0.46, 0.34, 0.82]),
+    left: L(R([-0.30, -0.84, 0.45], [0.46, 0.34, 0.82])),
+    headPitch: -0.48, headRoll: 0.04,
+  },
+  // Left hand carries the notebook; right hand writes in it.
+  notebook: {
+    right: R([-0.28, -0.84, 0.46], [0.62, 0.32, 0.72]),
+    left: L(R([-0.34, -0.86, 0.38], [0.45, 0.22, 0.87])),
+    headPitch: -0.50, headRoll: -0.05,
+  },
+  // Phone to the right ear, left arm hanging.
+  phone: {
+    right: R([-0.42, -0.86, 0.30], [0.42, 0.80, 0.42]),
+    left: L(HANG),
+    headPitch: 0.02, headRoll: 0.12,
   },
 };
 
@@ -50,8 +68,8 @@ const hold = (u, up = 0.25, down = 0.72) =>
 const decay = (u, cycles = 1.5) => Math.sin(Math.PI * 2 * cycles * u) * (1 - u) ** 2;
 
 // One-shot reactions. Each writes additive euler offsets through
-// `add(bone, axis, v)`, and aims an upper arm through `swing(bone, aim, k)`
-// (k = 0 hanging, 1 fully at the aim), for a normalised time u in [0,1].
+// `add(bone, axis, v)` and nudges an arm through `arm(side, part, dir, k)`
+// (k = 0 leaves it where the pose put it), for a normalised time u in [0,1].
 // Durations are in seconds.
 const REACTIONS = {
   // A short "got it" dip of the head.
@@ -61,51 +79,31 @@ const REACTIONS = {
     add('neck', 'x', 0.07 * s);
   } },
 
-  // Glances up at the prop that just appeared over his head, then comes back.
-  glance: { dur: 1.55, apply: (u, add) => {
-    const s = hold(u);
-    add('Head', 'x', -0.40 * s);
-    add('neck', 'x', -0.15 * s);
-    add('Spine', 'x', -0.045 * s);
-    add('Head', 'z', 0.05 * s);
-  } },
-
-  // Right arm up and a few passes of the forearm. His right is the side the
-  // text column sits on, so the wave reads as directed at the reader.
-  wave: { dur: 2.0, apply: (u, add, swing) => {
+  // Right arm up and a few passes of the forearm, torso still. His right is
+  // the side the text column sits on, so it reads as directed at the reader.
+  wave: { dur: 2.0, apply: (u, add, arm) => {
     const env = bell(u);
-    swing('RightArm', 'raise', env);
-    add('RightForeArm', 'x', -0.55 * env);
-    add('RightForeArm', 'y', Math.sin(u * Math.PI * 7) * 0.38 * env);
-    add('Head', 'z', 0.06 * env);
-    add('Spine', 'y', -0.05 * env);
-  } },
-
-  // An open-handed "here's the thing" gesture.
-  present: { dur: 1.7, apply: (u, add, swing) => {
-    const env = bell(u);
-    swing('RightArm', 'present', env);
-    add('RightForeArm', 'x', -0.30 * env);
-    add('RightForeArm', 'y', -0.45 * env);
-    add('Spine', 'y', -0.07 * env);
-    add('Head', 'y', -0.05 * env);
+    const sway = Math.sin(u * Math.PI * 7) * 0.32;
+    arm('right', 'up', [-0.80, 0.42, 0.20], env);
+    arm('right', 'fore', [sway, 0.92, 0.25], env);
+    add('Head', 'z', 0.05 * env);
   } },
 
   // Poked: a quick recoil that settles.
-  recoil: { dur: 0.75, apply: (u, add, swing) => {
+  recoil: { dur: 0.75, apply: (u, add, arm) => {
     const d = decay(u, 1.25);
     add('Spine02', 'x', 0.085 * d);
     add('Spine', 'x', 0.05 * d);
     add('Head', 'x', 0.13 * d);
-    swing('RightArm', 'lift', Math.max(0, d));
-    swing('LeftArm', 'lift', Math.max(0, d));
+    arm('right', 'up', [-0.45, -0.88, 0.10], Math.max(0, d));
+    arm('left', 'up', [0.45, -0.88, 0.10], Math.max(0, d));
   } },
 
   // Both arms lift a little, head sinks — a shrug without shoulder joints.
-  shrug: { dur: 1.15, apply: (u, add, swing) => {
+  shrug: { dur: 1.15, apply: (u, add, arm) => {
     const s = hold(u, 0.3, 0.6);
-    swing('RightArm', 'lift', s);
-    swing('LeftArm', 'lift', s);
+    arm('right', 'up', [-0.42, -0.90, 0.08], s);
+    arm('left', 'up', [0.42, -0.90, 0.08], s);
     add('Head', 'x', 0.07 * s);
     add('neck', 'x', 0.05 * s);
   } },
@@ -114,35 +112,88 @@ const REACTIONS = {
 export function createRig(root) {
   const bones = {};
   root.traverse((o) => { if (o.isBone) bones[o.name] = o; });
-  if (!bones.Head) return null;
+  if (!bones.Head || !bones.RightArm || !bones.LeftArm) return null;
 
   // Rest pose, captured once — every layer is additive on top of this.
   root.updateMatrixWorld(true);
   const rest = new Map();
+  const restWorldQ = new Map();
   for (const b of Object.values(bones)) {
     rest.set(b, { q: b.quaternion.clone(), p: b.position.clone() });
+    restWorldQ.set(b, b.getWorldQuaternion(new THREE.Quaternion()));
   }
 
-  // --- arm aiming ------------------------------------------------------------
-  // The local rotation that points `bone` (an upper arm) at `aim`, given in
-  // the figure's frame. Solved in world space with the rest pose as reference:
-  //   W' = R · W,  R = rotation taking the rest arm direction to the aim,
-  //   local' = P⁻¹ · R · P · local   (P = parent's world rotation).
-  // Solved once per aim at init, so the frame cost is a slerp.
-  const rootQ = root.getWorldQuaternion(new THREE.Quaternion());
-  function swingTo(bone, child, aim) {
-    const parentQ = bone.parent.getWorldQuaternion(new THREE.Quaternion());
-    const boneQ = bone.getWorldQuaternion(new THREE.Quaternion());
-    const restDir = child.position.clone().applyQuaternion(boneQ).normalize();
-    const wantDir = new THREE.Vector3(...aim).applyQuaternion(rootQ).normalize();
-    const R = new THREE.Quaternion().setFromUnitVectors(restDir, wantDir);
-    return parentQ.clone().invert().multiply(R).multiply(parentQ).multiply(bone.quaternion);
+  const ARMS = {
+    right: { up: [bones.RightArm, bones.RightForeArm], fore: [bones.RightForeArm, bones.RightHand] },
+    left: { up: [bones.LeftArm, bones.LeftForeArm], fore: [bones.LeftForeArm, bones.LeftHand] },
+  };
+
+  // --- aiming ------------------------------------------------------------------
+  // Point `bone` (whose child sits at child.position in its local frame) along
+  // `dir`, given in the figure's frame. Solved against the bone's *rest* local
+  // rotation so the twist stays what the artist gave it — only the swing
+  // changes. Parents are refreshed first, so a forearm aims correctly whatever
+  // the upper arm just did.
+  const rootQ = new THREE.Quaternion();
+  const _pq = new THREE.Quaternion(), _bw = new THREE.Quaternion(), _r = new THREE.Quaternion();
+  const _c = new THREE.Vector3(), _w = new THREE.Vector3();
+  function aimBone(bone, child, dir) {
+    bone.parent.updateWorldMatrix(true, false);
+    bone.parent.getWorldQuaternion(_pq);
+    _bw.copy(_pq).multiply(rest.get(bone).q).invert();     // world → bone's rest-local
+    _w.set(dir[0], dir[1], dir[2]).applyQuaternion(rootQ).applyQuaternion(_bw).normalize();
+    _c.copy(child.position).normalize();
+    _r.setFromUnitVectors(_c, _w);
+    bone.quaternion.copy(rest.get(bone).q).multiply(_r);
   }
-  const armPose = {}; // bone name → { hang, raise, present, lift } local quaternions
-  for (const [name, aims] of Object.entries(ARM_AIMS)) {
-    const bone = bones[name], child = bones[name.replace('Arm', 'ForeArm')];
-    if (!bone || !child) continue;
-    armPose[name] = Object.fromEntries(Object.entries(aims).map(([k, v]) => [k, swingTo(bone, child, v)]));
+
+  // --- pose blending -----------------------------------------------------------
+  let poseFrom = POSES.hang, poseTo = POSES.hang, poseK = 1;
+  const POSE_SPEED = 2.6;   // 1/s — roughly 0.4s to settle
+  const lerpDir = (a, b, k, out) => out.set(
+    a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k).normalize();
+  const cur = { right: { up: new THREE.Vector3(), fore: new THREE.Vector3() },
+    left: { up: new THREE.Vector3(), fore: new THREE.Vector3() } };
+  const nudges = [];   // this frame's arm nudges from reactions: { side, part, dir, k }
+  const arm = (side, part, dir, k) => { if (k > 0) nudges.push({ side, part, dir, k }); };
+
+  function setPose(name) {
+    const next = POSES[name] ?? POSES.hang;
+    if (next === poseTo) return;
+    // Blend from wherever he is now, not from the last pose's endpoint, and
+    // drop any gesture in flight — a wave finishing while he picks up the
+    // book has him doing two things with one arm.
+    poseFrom = snapshotPose();
+    poseTo = next;
+    poseK = 0;
+    active.length = 0;
+  }
+  function snapshotPose() {
+    const k = smooth(poseK);
+    const mix = (a, b, i) => a[i] + (b[i] - a[i]) * k;
+    const dir = (side, part) => [0, 1, 2].map((i) => mix(poseFrom[side][part], poseTo[side][part], i));
+    return {
+      right: { up: dir('right', 'up'), fore: dir('right', 'fore') },
+      left: { up: dir('left', 'up'), fore: dir('left', 'fore') },
+      headPitch: mix([poseFrom.headPitch], [poseTo.headPitch], 0),
+      headRoll: mix([poseFrom.headRoll], [poseTo.headRoll], 0),
+    };
+  }
+
+  // Business while holding something — typing, scribbling, talking, reading —
+  // so the pose never freezes into a mannequin.
+  function busywork(t, add, arm, k) {
+    if (poseTo === POSES.laptop) {
+      arm('right', 'fore', [0.22, -0.18 + Math.sin(t * 9) * 0.04, 0.96], k);
+      arm('left', 'fore', [-0.22, -0.18 + Math.sin(t * 9 + 1.3) * 0.04, 0.96], k);
+    } else if (poseTo === POSES.notebook) {
+      arm('right', 'fore', [0.62 + Math.sin(t * 7) * 0.06, 0.32 + Math.cos(t * 5) * 0.04, 0.72], k);
+    } else if (poseTo === POSES.phone) {
+      add('Head', 'x', Math.sin(t * 3.1) * 0.02 * k);        // talking
+      add('Head', 'y', Math.sin(t * 1.7) * 0.03 * k);
+    } else if (poseTo === POSES.book) {
+      add('Head', 'y', Math.sin(t * 0.9) * 0.025 * k);       // eyes across the page
+    }
   }
 
   const offs = new Map();   // bone name → {x,y,z} euler offset for this frame
@@ -152,18 +203,11 @@ export function createRig(root) {
     if (!o) offs.set(name, (o = { x: 0, y: 0, z: 0 }));
     o[axis] += v;
   };
-  const swings = new Map(); // arm name → { aim, k } — strongest request wins
-  const swing = (name, aim, k) => {
-    if (!armPose[name]?.[aim]) return;
-    const cur = swings.get(name);
-    if (!cur || k > cur.k) swings.set(name, { aim, k });
-  };
 
   const look = { yaw: 0, pitch: 0 };
   const active = [];        // running one-shots: { def, t }
   const e = new THREE.Euler();
   const q = new THREE.Quaternion();
-  const base = new THREE.Quaternion();
 
   // Idle gaze drift: when nothing is driving him, he glances off and back
   // rather than staring dead ahead. Re-rolled each time it completes.
@@ -187,10 +231,26 @@ export function createRig(root) {
 
   function setLook(yaw, pitch) { look.yaw = yaw; look.pitch = pitch; }
 
+  // A bone's world position and its rotation *relative to rest*, for hanging
+  // props off it: offsets given in the figure's frame at rest come out right
+  // wherever the bone has moved since.
+  const _anchorPos = new THREE.Vector3(), _anchorQ = new THREE.Quaternion(), _rq = new THREE.Quaternion();
+  function anchor(name) {
+    const b = bones[name];
+    if (!b) return null;
+    b.updateWorldMatrix(true, false);
+    b.getWorldPosition(_anchorPos);
+    b.getWorldQuaternion(_anchorQ).multiply(_rq.copy(restWorldQ.get(b)).invert()); // delta from rest
+    return { pos: _anchorPos, q: _anchorQ.multiply(rootQ) };
+  }
+
   // idleness: 0 while the pointer is live, 1 once he has been left alone.
   function update(dt, t, idleness = 0) {
     offs.clear();
-    swings.clear();
+    nudges.length = 0;
+    root.getWorldQuaternion(rootQ);
+    if (poseK < 1) poseK = Math.min(1, poseK + dt * POSE_SPEED);
+    const pk = smooth(poseK);
 
     // --- breath: the chest leads, the head rides on top of it ---------------
     const br = Math.sin(t * 1.15);
@@ -205,22 +265,35 @@ export function createRig(root) {
     add('Spine02', 'z', -0.020 * w);
     add('Spine', 'z', -0.011 * w);
     add('Head', 'z', -0.010 * w);
-    // the hanging arms drift a touch outward with the lean
-    swing('RightArm', 'lift', Math.max(0, 0.12 * w));
-    swing('LeftArm', 'lift', Math.max(0, -0.12 * w));
 
-    // --- look: shared out along the spine ----------------------------------
+    // --- look: shared out along the spine, plus where the pose puts his head
     driftT += dt;
     if (driftT > driftDur) rollDrift();
     const dk = idleness * bell(Math.min(1, driftT / driftDur));
-    const yaw = look.yaw + driftYaw * dk;
-    const pitch = look.pitch + driftPitch * dk;
+    const headPitch = poseFrom.headPitch + (poseTo.headPitch - poseFrom.headPitch) * pk;
+    const headRoll = poseFrom.headRoll + (poseTo.headRoll - poseFrom.headRoll) * pk;
+    // Holding something, he keeps most of his attention on it.
+    const attention = 1 - 0.65 * Math.abs(headPitch) / 0.5;
+    const yaw = (look.yaw + driftYaw * dk) * attention;
+    const pitch = (look.pitch + driftPitch * dk) * attention + headPitch;
     for (const [name, share] of LOOK_CHAIN) {
       add(name, 'y', yaw * share);
       add(name, 'x', -pitch * share);
     }
     // A head that turns also tips very slightly — pure yaw looks mechanical.
-    add('Head', 'z', yaw * 0.10);
+    add('Head', 'z', yaw * 0.10 + headRoll);
+
+    // --- arms: the blended pose, then whatever he's busy with ---------------
+    for (const side of ['right', 'left']) {
+      lerpDir(poseFrom[side].up, poseTo[side].up, pk, cur[side].up);
+      lerpDir(poseFrom[side].fore, poseTo[side].fore, pk, cur[side].fore);
+    }
+    // the hanging arms drift a touch outward with the lean
+    if (poseTo === POSES.hang) {
+      arm('right', 'up', [-0.40, -0.90, 0.06], Math.max(0, 0.12 * w));
+      arm('left', 'up', [0.40, -0.90, 0.06], Math.max(0, -0.12 * w));
+    }
+    busywork(t, add, arm, pk);
 
     // --- one-shot reactions -------------------------------------------------
     for (let i = active.length - 1; i >= 0; i--) {
@@ -228,23 +301,25 @@ export function createRig(root) {
       a.t += dt;
       const u = a.t / a.def.dur;
       if (u >= 1) { active.splice(i, 1); continue; }
-      a.def.apply(u, add, swing);
+      a.def.apply(u, add, arm);
+    }
+    for (const n of nudges) {
+      const v = cur[n.side][n.part];
+      lerpDir([v.x, v.y, v.z], n.dir, n.k, v);
     }
 
-    // --- compose: arms from their aimed base, everything else from rest ----
-    for (const name of Object.keys(armPose)) {
-      const req = swings.get(name);
-      base.copy(armPose[name].hang);
-      if (req) base.slerp(armPose[name][req.aim], req.k);
-      bones[name].quaternion.copy(base);
-    }
+    // --- compose: torso and head from rest + offsets, then aim the arms ------
     for (const [name, o] of offs) {
       const b = bones[name];
-      const from = armPose[name] ? b.quaternion : rest.get(b).q;
       e.set(o.x, o.y, o.z, 'YXZ');
-      b.quaternion.copy(from).multiply(q.setFromEuler(e));
+      b.quaternion.copy(rest.get(b).q).multiply(q.setFromEuler(e));
+    }
+    for (const side of ['right', 'left']) {
+      const c = cur[side];
+      aimBone(ARMS[side].up[0], ARMS[side].up[1], [c.up.x, c.up.y, c.up.z]);
+      aimBone(ARMS[side].fore[0], ARMS[side].fore[1], [c.fore.x, c.fore.y, c.fore.z]);
     }
   }
 
-  return { update, setLook, trigger, bones, isBusy: () => active.length > 0 };
+  return { update, setLook, setPose, trigger, anchor, bones, root, isBusy: () => active.length > 0 };
 }

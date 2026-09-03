@@ -70,15 +70,21 @@ bust. It has a real humanoid skeleton, so the cursor drives its `Head` bone
 directly instead of the runtime two-bone hack the unrigged bust needed.
 `?model=bust` still loads the old one.
 
-Selecting a chip floats a Sims-style icon above his head — mic / book /
-envelope / speech bubble — spinning slowly like a plumbob. All are built from
-primitives except the book, which uses the real cover art.
+Selecting a chip puts something in his hands and poses him around it:
+"Learn how I can help" → a MacBook Pro held open in both hands, eyes on the
+screen (the viewer sees the back of the lid, as they would); "Buy my book" →
+the book held at the chest, cover to the viewer, head down into it;
+"Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
+"Drop a quick line" → an iPhone at his right ear, head tilted to it, small
+talking nods. Reset puts them down and he shrugs. All primitives except the
+cover art. Each prop is anchored to a bone (Spine, LeftHand, RightHand) with
+an offset in the figure's frame at rest, and rides that bone's rotation *since
+rest* — so the phone stays on the ear as he turns and the pencil stays in the
+hand as it moves (`rig.anchor`). Real sizes in metres, scaled with the figure.
 
 Framing: full body on desktop; phones crop to the upper body and cap the text
-sheet at 62dvh so the figure and its prop keep room above it. Props sit at
-z=0.25, nearer the camera than the figure, so they project ~9% larger than a
-z=0 calculation predicts. Tunables: `?propgap=` `?propb=` `?busty=` `?busts=`
-`?moby=` `?mobs=`.
+sheet at 62dvh. Tunables: `?busty=` `?busts=` `?moby=` `?mobs=`; `?pose=laptop`
+(or book / notebook / phone) lands him in that pose on load, for tuning.
 
 **Model provenance (v7):** Higgsfield/Meshy multi_image_to_3d, a-pose, rigged,
 from three inputs built by [tools/model/matte.mjs](tools/model/matte.mjs) —
@@ -135,32 +141,35 @@ composed onto the captured rest pose each frame:
   reading like an owl bolted to a turntable.
 - **idle gaze drift** — left alone for ~2.5s he starts glancing off and back
   instead of staring
-- **reactions** — one-shots: `nod` `glance` `wave` `present` `recoil` `shrug`
+- **poses** — `POSES` in rig.js: per pose, a direction for each upper arm and
+  each forearm plus a head pitch/roll. Chips blend to the matching pose
+  (~0.4s, from wherever he currently is); reset blends back to `hang`. While
+  holding something he keeps most of his attention on it (the cursor look is
+  damped) and does busywork — typing, scribbling, talking nods, eyes across
+  the page — so the pose never freezes.
+- **reactions** — one-shots: `nod` `wave` `recoil` `shrug`. A pose change
+  cancels any in flight.
 
-Triggers: hovering him nods (a window-level ray/box test — the canvas takes no
-pointer events, sitting behind the text column); clicking him recoils;
-selecting a chip glances up at the prop that just appeared, then answers it
-900ms later with a gesture (help → present, book → nod, substack/contact →
-wave); reset shrugs.
+Triggers: a wave 900ms after he loads (the greeting); hovering him nods (a
+window-level ray/box test — the canvas takes no pointer events, sitting behind
+the text column); clicking him recoils; reset shrugs.
 
 **Axis map, measured against this rig** (poke a bone and look — there is no
 convention to rely on): `Head.x` negative looks up, `Head.y` positive turns to
 his left, `Head.z` positive tilts toward his right shoulder;
 `RightForeArm.x` negative bends the elbow up. Debug handle: `__bfRig`.
 
-**The upper arms are aimed, not rotated.** Their local axes are tilted, so a
-single-axis euler sweeps a cone — `RightArm.x` looked like it lowered the arm
-from the front but was actually swinging it 45° *behind* him. `ARM_AIMS` gives
-each upper arm target directions in the figure's frame (his right is −x,
-forward +z): `hang` is the base (arms at his sides, ~9° off vertical — the
-generator delivers an A-pose), and `raise` / `present` / `lift` are what wave,
-present and shrug/recoil slerp toward. `swingTo` solves the local quaternion
-for each aim once at init, so this survives a model swap untouched.
-
-**Props anchor to the crown.** The floating item sits `PROP_GAP` (0.05) above
-the `head_end` bone plus its own half-height, re-anchored every frame — so it
-rides with his head and sits at the same clearance whatever the model's
-proportions. `?propgap=` tunes it.
+**The arms are aimed, not rotated — both joints.** Their local axes are
+tilted, so a single-axis euler sweeps a cone (`RightArm.x` looked like it
+lowered the arm from the front but was actually swinging it 45° *behind* him).
+`aimBone` points a bone along a direction in the figure's frame (his right −x,
+up +y, forward +z) every frame, solved against the bone's rest rotation so the
+artist's twist survives and only the swing changes; parents are refreshed
+first, so the forearm aims correctly whatever the upper arm just did. That is
+what gives him elbows — the old single-joint wave was a stiff lever from the
+shoulder with the torso leaning to help. Directions blend (lerp + normalise)
+rather than quaternions slerping, so poses are plain numbers to tune. This all
+survives a model swap untouched.
 
 ## Verification
 Headless one-shot Chrome is unreliable for this page (virtual-time kills large

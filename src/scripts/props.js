@@ -1,86 +1,120 @@
-// Sims-style props: one icon per chip, floating above the figure's head,
-// slowly spinning like a plumbob. Everything except the book is built from
-// primitives, so the whole set costs one texture (the real book cover).
+// Held props: one object per chip, placed in his hands rather than floated
+// over his head. Each is anchored to a bone with an offset given in the
+// figure's frame at rest (his right −x, up +y, forward +z, metres), and rides
+// that bone's movement since rest — so the phone stays on his ear when he
+// turns his head, and the pencil stays in his hand as it scribbles. Everything
+// except the book cover is primitives, so the set costs one texture.
 import * as THREE from 'three';
 
 const COVER = '/images/book-cover.jpg';
 
 const INK = 0x1b1a19;
-const WHITE = 0xfbf9f5;
 const ACCENT = 0xe1a511;   // the book's orange, sampled from the cover art
-const BLUE = 0x312dfb;     // the site's accent
 const PAGE = 0xf1ece1;
 const SPINE = 0xd2960f;
+const SPACE_GREY = 0x8d9096;
+const SCREEN = 0x15171c;
 
 const lambert = (color) => new THREE.MeshLambertMaterial({ color });
+const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
 
+// 6x9in paperback, the real proportions. Cover faces +z.
 function buildBook(renderer) {
   const g = new THREE.Group();
   const tex = new THREE.TextureLoader().load(COVER);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-  // 6x9in paperback, ~0.7in thick — proportions taken from the real copy
-  const W = 0.28, H = 0.4, D = 0.034;
+  const W = 0.152, H = 0.229, D = 0.018;
   const cover = new THREE.MeshBasicMaterial({ map: tex }); // unlit: art stays true
-  // BoxGeometry material order: +x, -x, +y, -y, +z, -z (cover faces +z)
-  g.add(new THREE.Mesh(
-    new THREE.BoxGeometry(W, H, D),
-    [lambert(PAGE), lambert(SPINE), lambert(PAGE), lambert(PAGE), cover, lambert(ACCENT)],
-  ));
+  // BoxGeometry material order: +x, -x, +y, -y, +z, -z
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D),
+    [lambert(PAGE), lambert(SPINE), lambert(PAGE), lambert(PAGE), cover, lambert(ACCENT)]));
   return g;
 }
 
-function buildMic() {
+// 14" MacBook Pro: base with a keyboard well, lid open ~105°, hinge at the back.
+function buildLaptop() {
   const g = new THREE.Group();
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 16), lambert(0x3a3a3a));
-  head.scale.set(1, 1.05, 1);
-  head.position.y = 0.13;
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.018, 8, 20), lambert(ACCENT));
-  collar.position.y = 0.045;
-  collar.rotation.x = Math.PI / 2;
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.052, 0.26, 16), lambert(INK));
-  handle.position.y = -0.09;
-  g.add(head, collar, handle);
+  const W = 0.312, D = 0.221, T = 0.0155;
+  const base = box(W, T, D, lambert(SPACE_GREY));
+  const keys = box(W * 0.78, 0.002, D * 0.42, lambert(0x2a2c31));
+  keys.position.set(0, T / 2 + 0.001, -D * 0.12);
+  const pad = box(W * 0.36, 0.0015, D * 0.30, lambert(0x74777c));
+  pad.position.set(0, T / 2 + 0.001, D * 0.28);
+  // Lid: hinge on the far edge (+z, toward the camera), screen on the near
+  // face so it faces him; the viewer sees the back of the lid, as they would.
+  const lid = new THREE.Group();
+  const shell = box(W, D, 0.004, lambert(SPACE_GREY));
+  shell.position.y = D / 2;
+  const screen = box(W * 0.94, D * 0.90, 0.001, new THREE.MeshBasicMaterial({ color: SCREEN }));
+  screen.position.set(0, D / 2 + 0.01, -0.0026);
+  const glow = box(W * 0.94, D * 0.90, 0.0005, new THREE.MeshBasicMaterial({ color: 0x3b4b6b }));
+  glow.position.set(0, D / 2 + 0.01, -0.0031);
+  lid.add(shell, screen, glow);
+  lid.position.set(0, T / 2, D / 2);
+  lid.rotation.x = THREE.MathUtils.degToRad(18); // open a little past vertical, leaning away from him
+  g.add(base, keys, pad, lid);
   return g;
 }
 
-function buildEnvelope() {
+// A5 notebook, cream page block with a dark cover, lying open-flat is too
+// much geometry to read at this size — closed, held like a clipboard.
+function buildNotebook() {
   const g = new THREE.Group();
-  const W = 0.34, H = 0.23;
-  g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.02), lambert(WHITE)));
-  // the flap: a flat triangle sitting just proud of the front face
-  const flap = new THREE.Shape();
-  flap.moveTo(-W / 2, H / 2);
-  flap.lineTo(W / 2, H / 2);
-  flap.lineTo(0, -H / 12);
-  flap.closePath();
-  const flapMesh = new THREE.Mesh(new THREE.ShapeGeometry(flap), lambert(0xe4ded2));
-  flapMesh.position.z = 0.011;
-  const back = flapMesh.clone();
-  back.position.z = -0.011;
-  back.rotation.y = Math.PI;
-  g.add(flapMesh, back);
-  return g;
-}
-
-function buildBubble() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 18), lambert(WHITE));
-  body.scale.set(1.25, 0.85, 0.55);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.12, 12), lambert(WHITE));
-  tail.position.set(-0.05, -0.15, 0);
-  tail.rotation.z = 0.4;
-  tail.scale.z = 0.55;
-  g.add(body, tail);
-  for (let i = -1; i <= 1; i++) { // "..." so it reads as a message
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), lambert(BLUE));
-    dot.position.set(i * 0.07, 0, 0.09);
-    g.add(dot);
+  const W = 0.148, H = 0.21, D = 0.014;
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D),
+    [lambert(PAGE), lambert(0x26241f), lambert(PAGE), lambert(PAGE), lambert(PAGE), lambert(0x26241f)]));
+  // the open page faces him (+z is the figure's forward); a few ruled lines
+  for (let i = -3; i <= 3; i++) {
+    const line = box(W * 0.7, 0.0012, 0.0004, lambert(0xb9b2a2));
+    line.position.set(0, i * 0.022, D / 2 + 0.0004);
+    g.add(line);
   }
   return g;
 }
 
-const BUILDERS = { book: buildBook, mic: buildMic, envelope: buildEnvelope, bubble: buildBubble };
+// A pencil, tip toward −y so "down into the page" is the natural hold.
+function buildPencil() {
+  const g = new THREE.Group();
+  const L = 0.175;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0038, 0.0038, L, 8), lambert(0xe3b52c));
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.0038, 0.014, 8), lambert(0xd9c7a3));
+  tip.position.y = -L / 2 - 0.007;
+  tip.rotation.x = Math.PI;
+  const lead = new THREE.Mesh(new THREE.ConeGeometry(0.0012, 0.004, 6), lambert(INK));
+  lead.position.y = -L / 2 - 0.013;
+  lead.rotation.x = Math.PI;
+  const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.012, 8), lambert(0xc9c9c9));
+  ferrule.position.y = L / 2 + 0.005;
+  const eraser = new THREE.Mesh(new THREE.CylinderGeometry(0.0038, 0.0038, 0.009, 8), lambert(0xe0a3a0));
+  eraser.position.y = L / 2 + 0.015;
+  g.add(body, tip, lead, ferrule, eraser);
+  return g;
+}
+
+// iPhone, screen on +z.
+function buildPhone() {
+  const g = new THREE.Group();
+  const W = 0.0716, H = 0.1476, D = 0.0078;
+  g.add(box(W, H, D, lambert(INK)));
+  const screen = box(W * 0.9, H * 0.94, 0.0006, new THREE.MeshBasicMaterial({ color: 0x1c2230 }));
+  screen.position.z = D / 2 + 0.0003;
+  g.add(screen);
+  return g;
+}
+
+// Where each prop sits: bone, offset from that bone in the figure's frame at
+// rest (metres), and its orientation there (euler, radians). Tuned by looking.
+const ITEMS = {
+  laptop: [{ build: buildLaptop, anchor: 'Spine', offset: [0.0, -0.30, 0.30], rot: [0.06, 0, 0] }],
+  book: [{ build: buildBook, anchor: 'Spine', offset: [0.0, -0.17, 0.27], rot: [-0.45, 0, 0] }],
+  notebook: [
+    { build: buildNotebook, anchor: 'LeftHand', offset: [0.0, 0.07, 0.05], rot: [-0.85, 0.15, 0] },
+    { build: buildPencil, anchor: 'RightHand', offset: [-0.01, 0.03, 0.05], rot: [-0.45, 0, 0.30] },
+  ],
+  // His right is −x: the phone sits just outside the hand, against the ear.
+  phone: [{ build: buildPhone, anchor: 'RightHand', offset: [-0.035, 0.035, 0.03], rot: [0.10, 0.55, -0.20] }],
+};
 
 export function createProps({ scene, renderer }) {
   const root = new THREE.Group();
@@ -88,46 +122,29 @@ export function createProps({ scene, renderer }) {
   scene.add(root);
 
   const items = {};
-  const halfHeight = {}; // per item, unscaled — so each one clears the head by the same gap
-  for (const [key, build] of Object.entries(BUILDERS)) {
-    const obj = build(renderer);
-    obj.visible = false;
-    root.add(obj);
-    items[key] = obj;
-    halfHeight[key] = new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3()).y / 2;
+  for (const [key, parts] of Object.entries(ITEMS)) {
+    items[key] = parts.map((p) => {
+      const obj = p.build(renderer);
+      obj.visible = false;
+      root.add(obj);
+      return { ...p, obj, eul: new THREE.Euler(...p.rot) };
+    });
   }
 
-  let base = 1;
-  let baseY = 0;
-  let gap = 0;
   let current = null;
-  let t = 0;
-
-  function setLayout({ position, scale }) {
-    root.position.copy(position);
-    baseY = position.y;
-    base = scale;
-  }
-
-  // Sims plumbob rule: the item floats a fixed gap above the top of the head,
-  // whatever its own height. `headTop` is world-space; call it every frame so
-  // the prop rides with the head when he looks around or a reaction lifts him.
-  function setAnchor(headTop, g) {
-    root.position.x = headTop.x;
-    gap = g;
-    baseY = headTop.y;
-  }
+  let amount = 0;
+  const _off = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
 
   function setItem(key) {
     current = key && items[key] ? key : null;
-    for (const [k, obj] of Object.entries(items)) obj.visible = k === current;
+    for (const [k, parts] of Object.entries(items)) for (const p of parts) p.obj.visible = k === current;
   }
 
-  // 0 = absent, 1 = fully present. Scene eases this so items pop in and out.
+  // 0 = absent, 1 = fully present. Scene eases this so props pop in and out.
   function setAmount(k) {
+    amount = k;
     root.visible = k > 0.001 && !!current;
     if (!root.visible) return;
-    root.scale.setScalar(base * (0.55 + 0.45 * k));
     root.traverse((o) => {
       if (!o.isMesh) return;
       for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
@@ -138,14 +155,22 @@ export function createProps({ scene, renderer }) {
     });
   }
 
-  // Plumbob motion: a slow constant spin plus a gentle bob.
-  function update(dt) {
-    if (!root.visible) return;
-    t += dt;
-    root.rotation.y = t * 0.7;
-    const lift = current ? gap + halfHeight[current] * root.scale.y : 0;
-    root.position.y = baseY + lift + Math.sin(t * 1.6) * 0.03;
+  // Place every part of the current item on its bone. Needs the rig, which has
+  // already posed him this frame.
+  function update(dt, rig) {
+    if (!root.visible || !current || !rig) return;
+    rig.root.getWorldScale(_s);
+    const scale = _s.x * (0.7 + 0.3 * amount);
+    for (const p of items[current]) {
+      const a = rig.anchor(p.anchor);
+      if (!a) { p.obj.visible = false; continue; }
+      p.obj.visible = true;
+      _off.set(p.offset[0], p.offset[1], p.offset[2]).multiplyScalar(_s.x).applyQuaternion(a.q);
+      p.obj.position.copy(a.pos).add(_off);
+      p.obj.quaternion.copy(a.q).multiply(_q.setFromEuler(p.eul));
+      p.obj.scale.setScalar(scale);
+    }
   }
 
-  return { setLayout, setAnchor, setItem, setAmount, update, root };
+  return { setItem, setAmount, update, root };
 }
