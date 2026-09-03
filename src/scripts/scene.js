@@ -249,7 +249,7 @@ export function initScene({ stage, motionChip, onProgress }) {
 
   // Which reply puts what in his hands. The pose of the same name in rig.js
   // brings his arms and head to it.
-  const PROP_FOR = { help: 'laptop', book: 'book', substack: 'notebook', contact: 'phone' };
+  const PROP_FOR = { help: 'laptop', book: 'book', substack: 'notebook', contact: 'phone', coffee: 'coffee' };
 
   function wireProps() {
     props = createProps({ scene, renderer });
@@ -280,9 +280,6 @@ export function initScene({ stage, motionChip, onProgress }) {
     renderOnce(); // synchronous first frame — never gate visibility on the loop
     canvas.classList.add('is-ready');
     wireProps();
-    // A hello once he's in — also the only place the wave is used now that the
-    // chips put things in his hands instead.
-    if (rig && !reduced && !q.get('pose')) setTimeout(() => rig?.trigger('wave'), 900);
     onProgress?.(1);
     if (!reduced) start();
   }

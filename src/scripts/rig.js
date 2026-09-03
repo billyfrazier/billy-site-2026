@@ -52,6 +52,12 @@ export const POSES = {
     left: L(R([-0.34, -0.86, 0.38], [0.45, 0.22, 0.87])),
     headPitch: -0.50, headRoll: -0.05,
   },
+  // To-go cup held up at the chest in the right hand, left arm hanging.
+  coffee: {
+    right: R([-0.30, -0.88, 0.36], [0.30, 0.62, 0.72]),
+    left: L(HANG),
+    headPitch: -0.04, headRoll: 0.03,
+  },
   // Phone to the right ear, left arm hanging.
   phone: {
     right: R([-0.42, -0.86, 0.30], [0.42, 0.80, 0.42]),
@@ -77,18 +83,6 @@ const REACTIONS = {
     const s = bell(u);
     add('Head', 'x', 0.19 * s);
     add('neck', 'x', 0.07 * s);
-  } },
-
-  // Right arm up and a few passes of the forearm, torso still. His right is
-  // the side the text column sits on, so it reads as directed at the reader.
-  wave: { dur: 2.0, apply: (u, add, arm) => {
-    const env = bell(u);
-    const sway = Math.sin(u * Math.PI * 7) * 0.32;
-    // Upper arm just under horizontal: any higher and the scan's armpit — a
-    // closed surface between sleeve and jacket side — stretches into a web.
-    arm('right', 'up', [-0.95, 0.06, 0.26], env);
-    arm('right', 'fore', [sway * 0.8, 0.90, 0.35], env);
-    add('Head', 'z', 0.05 * env);
   } },
 
   // Poked: a quick recoil that settles.
@@ -163,7 +157,7 @@ export function createRig(root) {
     const next = POSES[name] ?? POSES.hang;
     if (next === poseTo) return;
     // Blend from wherever he is now, not from the last pose's endpoint, and
-    // drop any gesture in flight — a wave finishing while he picks up the
+    // drop any gesture in flight — a shrug finishing while he picks up the
     // book has him doing two things with one arm.
     poseFrom = snapshotPose();
     poseTo = next;
@@ -195,6 +189,11 @@ export function createRig(root) {
       add('Head', 'y', Math.sin(t * 1.7) * 0.03 * k);
     } else if (poseTo === POSES.book) {
       add('Head', 'y', Math.sin(t * 0.9) * 0.025 * k);       // eyes across the page
+    } else if (poseTo === POSES.coffee) {
+      // a sip every so often: the cup comes up to the mouth and back
+      const sip = Math.max(0, Math.sin(t * 0.55)) ** 6;
+      arm('right', 'fore', [0.22, 0.86, 0.46], sip * k);
+      add('Head', 'x', 0.10 * sip * k);
     }
   }
 

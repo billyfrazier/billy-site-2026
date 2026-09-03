@@ -92,6 +92,21 @@ function buildPencil() {
   return g;
 }
 
+// A 12oz to-go cup: tapered paper cup, kraft sleeve, dark lid. Up is +y.
+function buildCoffee() {
+  const g = new THREE.Group();
+  const H = 0.11;
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.032, H, 24), lambert(0xf3efe6));
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.0405, 0.036, H * 0.42, 24), lambert(0xb99566));
+  sleeve.position.y = -H * 0.05;
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.012, 24), lambert(0x2b2a29));
+  lid.position.y = H / 2 + 0.006;
+  const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.042, 0.010, 24), lambert(0x2b2a29));
+  dome.position.y = H / 2 + 0.017;
+  g.add(cup, sleeve, lid, dome);
+  return g;
+}
+
 // iPhone, screen on +z.
 function buildPhone() {
   const g = new THREE.Group();
@@ -120,6 +135,7 @@ const ITEMS = {
     // tip (−y) down and forward into the page
     { build: buildPencil, anchor: 'RightHand', along: 0.07, offset: [0, 0.03, 0.0], rot: [0.55, 0, -0.45], fixedRot: true },
   ],
+  coffee: [{ build: buildCoffee, anchor: 'RightHand', along: 0.06, offset: [0, 0.02, 0.01], rot: [0, 0, 0], fixedRot: true }],
   // His right is −x: the phone sits in the palm, flat against the ear.
   phone: [{ build: buildPhone, anchor: 'RightHand', along: 0.05, offset: [-0.02, 0.01, 0.0], rot: [0.10, 0.55, -0.20], fixedRot: true }],
 };

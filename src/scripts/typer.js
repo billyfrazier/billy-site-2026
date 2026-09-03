@@ -42,6 +42,10 @@ const REPLIES = {
     text: `Talks? Projects? Questions? I (usually) read everything, and I'm chronically online. Write me: ${EMAIL}`,
     chips: [{ label: 'Copy email', action: 'copy' }, { label: 'Open mail app →', href: `mailto:${EMAIL}` }],
   },
+  coffee: {
+    text: 'Want to chat while we enable my coffee addiction?',
+    chips: [{ label: 'Book coffee', href: 'https://calendly.com/billy-frazier/coffee-with-billy' }],
+  },
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

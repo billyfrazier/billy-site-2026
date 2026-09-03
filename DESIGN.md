@@ -20,9 +20,10 @@ Header: logo left (public/logo.svg — two black tags), nothing right for now
 (the hamburger for separate pages was removed 2026-09-02; it's in git history
 at 0421fef when pages arrive). Left column
 vertically centered: blurred intro line (blur 0.8px — keep ≤1px for a11y),
-typed headline with blinking block cursor, five white pill chips (four reply
-chips plus "Book coffee with me", a plain link to Calendly in a new tab),
-follow-up chips appear under a reply. Bottom-left: circular reset ↺ + 160×2px progress
+typed headline with blinking block cursor, five white pill chips (the fifth,
+"Grab coffee with me", is a reply like the others: he holds a to-go cup, the
+headline asks about enabling his coffee addiction, and a black "Book coffee"
+CTA goes to Calendly), follow-up chips appear under a reply. Bottom-left: circular reset ↺ + 160×2px progress
 bar (blue while the GLB loads, black for typing progress). Bottom-right slot:
 "Enable motion" chip (iOS tilt permission) — the reference's sound controls
 live there; we ship no sound. Mobile ≤720px: the text moves into a solid white sheet pinned to the bottom
@@ -76,7 +77,8 @@ screen (the viewer sees the back of the lid, as they would); "Buy my book" →
 the book held at the chest, cover to the viewer, head down into it;
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
 "Drop a quick line" → an iPhone at his right ear, head tilted to it, small
-talking nods. Reset puts them down and he shrugs. All primitives except the
+talking nods; "Grab coffee with me" → a to-go cup in his right hand, with a
+sip every ten seconds or so. Reset puts them down and he shrugs. All primitives except the
 cover art. Two-handed props (laptop, book) sit *between the hands* — centred on their
 midpoint, x-axis along right→left hand — so they are in the hands wherever a
 pose lands them. One-handed props anchor to a hand bone with an offset in the
@@ -150,12 +152,12 @@ composed onto the captured rest pose each frame:
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across
   the page — so the pose never freezes.
-- **reactions** — one-shots: `nod` `wave` `recoil` `shrug`. A pose change
-  cancels any in flight.
+- **reactions** — one-shots: `nod` `recoil` `shrug`. A pose change cancels
+  any in flight. (The wave was removed 2026-09-02 at Billy's request.)
 
-Triggers: a wave 900ms after he loads (the greeting); hovering him nods (a
-window-level ray/box test — the canvas takes no pointer events, sitting behind
-the text column); clicking him recoils; reset shrugs.
+Triggers: hovering him nods (a window-level ray/box test — the canvas takes no
+pointer events, sitting behind the text column); clicking him recoils; reset
+shrugs.
 
 **Axis map, measured against this rig** (poke a bone and look — there is no
 convention to rely on): `Head.x` negative looks up, `Head.y` positive turns to

@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-02 — No more waving. "Grab coffee with me" is now a reply chip like the others: he holds a to-go cup (and sips), the headline reads "Want to chat while we enable my coffee addiction?", and a black "Book coffee" CTA goes to Calendly.
 - 2026-09-02 — Hamburger removed for now; "Book coffee with me" chip links to Calendly (new tab); on phones the text sheet is a fixed height and scrolls inside instead of growing over the figure.
 - 2026-09-02 — Arms free of the torso: the scan's auto-rig weights gave the upper arm a wedge of the jacket's side, so it rose with the arm; repaired by rule (tools/model/fixweights). Wave keeps the elbow under shoulder height so the armpit doesn't web. Props now sit in the hands — two-handed ones centred between them — instead of near them.
 - 2026-09-02 — He holds things now: each chip puts an object in his hands and poses him around it — MacBook Pro (help), the book (buy), notebook + pencil (Substack), iPhone at the ear (contact) — with typing/scribbling/talking busywork. Replaces the floating icons.
