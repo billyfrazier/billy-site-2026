@@ -16,19 +16,19 @@ the four chips.
 - Grid margin 2.667rem, header 4rem, borders 2px.
 
 ## Layout
-Header: logo left (public/logo.svg — two black tags) · hamburger right, which
-drops a bordered white sheet under the header (`.site-menu`, currently just
-"Let's talk" — the home for separate pages as they arrive). The three rules
-are `--border-size` thick and fold into an × when open; Escape or a click
-outside closes it. Left column
+Header: logo left (public/logo.svg — two black tags), nothing right for now
+(the hamburger for separate pages was removed 2026-09-02; it's in git history
+at 0421fef when pages arrive). Left column
 vertically centered: blurred intro line (blur 0.8px — keep ≤1px for a11y),
-typed headline with blinking block cursor, four white pill chips, follow-up
-chips appear under a reply. Bottom-left: circular reset ↺ + 160×2px progress
+typed headline with blinking block cursor, five white pill chips (four reply
+chips plus "Book coffee with me", a plain link to Calendly in a new tab),
+follow-up chips appear under a reply. Bottom-left: circular reset ↺ + 160×2px progress
 bar (blue while the GLB loads, black for typing progress). Bottom-right slot:
 "Enable motion" chip (iOS tilt permission) — the reference's sound controls
 live there; we ship no sound. Mobile ≤720px: the text moves into a solid white sheet pinned to the bottom
-with a rounded top edge (no translucent scrim over the face), the bust is framed
-in the clear space above it, the reset button becomes a filled black circle over
+with a rounded top edge (no translucent scrim over the face). The sheet is a
+fixed 62dvh and scrolls inside — a long reply never pushes it up over him.
+The bust is framed in the clear space above it, the reset button becomes a filled black circle over
 the sheet, and the progress bar becomes a hairline on the bottom edge — matching
 the LISA reference.
 

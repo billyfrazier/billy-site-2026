@@ -91,52 +91,6 @@ a { color: inherit; text-decoration: none; }
 .site-header .logo:hover { opacity: 0.75; }
 .site-header a:not(.logo):hover { color: var(--accent); }
 
-/* Hamburger: three 2px rules (matches --border-size) on a 44px hit target */
-.menu-btn {
-  width: 2.75rem;
-  height: 2.75rem;
-  margin-right: -0.6rem; /* rules align with the grid margin, not the hit box */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.36rem;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  color: var(--color);
-}
-.menu-btn span {
-  display: block;
-  width: 1.5rem;
-  height: var(--border-size);
-  margin-inline: auto;
-  background: currentColor;
-  transition: transform 200ms ease, opacity 200ms ease;
-}
-.menu-btn:hover { color: var(--accent); }
-.menu-btn[aria-expanded="true"] span:nth-child(1) { transform: translateY(calc(0.36rem + var(--border-size))) rotate(45deg); }
-.menu-btn[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
-.menu-btn[aria-expanded="true"] span:nth-child(3) { transform: translateY(calc(-0.36rem - var(--border-size))) rotate(-45deg); }
-
-/* The menu itself: a white sheet dropping under the header, right-aligned */
-.site-menu {
-  position: fixed;
-  top: var(--header-height);
-  right: var(--grid-margin);
-  z-index: var(--z-ui);
-  background: var(--color-bg);
-  border: var(--border-size) solid var(--color);
-  border-radius: 1rem;
-  padding: 0.5rem 0;
-  min-width: 12rem;
-}
-.site-menu ul { list-style: none; }
-.site-menu a {
-  display: block;
-  padding: 0.7rem 1.4rem;
-  font-weight: 500;
-}
-.site-menu a:hover { color: var(--accent); }
 
 /* ---------- Left column ---------- */
 .col {
@@ -185,6 +139,8 @@ a { color: inherit; text-decoration: none; }
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
+  color: inherit;            /* link chips (Calendly) look like the button chips */
+  text-decoration: none;
   background: var(--color-bg);
   border-radius: 999px;
   padding: 0.62em 1.15em;
@@ -277,7 +233,12 @@ a { color: inherit; text-decoration: none; }
     bottom: 0;
     transform: none;
     width: 100%;
-    max-height: 62dvh;   /* leaves the figure and its prop room above */
+    /* A fixed-height sheet: longer replies scroll inside it rather than
+       pushing it up over the figure. 62dvh leaves him room above. */
+    height: 62dvh;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--color-bg);
     border-radius: 20px 20px 0 0;
     padding: 1.15rem var(--grid-margin) 5rem; /* clears the bottom controls */
