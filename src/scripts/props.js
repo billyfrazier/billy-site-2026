@@ -100,22 +100,48 @@ function buildNotebook() {
   return g;
 }
 
-// A pencil, tip toward −y so "down into the page" is the natural hold.
-function buildPencil() {
+// A 16:9 slide, drawn to a canvas: title, a pie chart, a bar graph. Same face
+// both sides — it spins.
+function drawSlide() {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 360;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 640, 360);
+  g.fillStyle = '#312dfb'; g.fillRect(0, 0, 640, 10);                 // accent rule
+  g.fillStyle = '#111'; g.font = 'bold 30px Helvetica, Arial'; g.textBaseline = 'alphabetic';
+  g.fillText('Where the ideas went', 40, 62);
+  g.fillStyle = '#777'; g.font = '16px Helvetica, Arial';
+  g.fillText('Q3 · share of attention', 40, 88);
+  // pie
+  const slices = [[0.38, '#312dfb'], [0.27, '#7f7cff'], [0.2, '#c9c7ff'], [0.15, '#e6e6e6']];
+  let a0 = -Math.PI / 2;
+  for (const [f, col] of slices) {
+    const a1 = a0 + f * Math.PI * 2;
+    g.fillStyle = col; g.beginPath(); g.moveTo(170, 220); g.arc(170, 220, 95, a0, a1); g.closePath(); g.fill();
+    a0 = a1;
+  }
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(170, 220, 38, 0, Math.PI * 2); g.fill();  // donut hole
+  // bars
+  const bars = [0.35, 0.6, 0.48, 0.82, 0.7];
+  g.strokeStyle = '#e3e3e3'; g.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) { const y = 318 - i * 60; g.beginPath(); g.moveTo(330, y); g.lineTo(600, y); g.stroke(); }
+  bars.forEach((h, i) => {
+    g.fillStyle = i === 3 ? '#312dfb' : '#b9b7ff';
+    const bh = h * 180; g.beginPath(); g.roundRect(340 + i * 52, 318 - bh, 34, bh, 4); g.fill();
+  });
+  g.fillStyle = '#999'; g.font = '13px Helvetica, Arial';
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((d, i) => g.fillText(d, 344 + i * 52, 340));
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+function buildSlide() {
   const g = new THREE.Group();
-  const L = 0.175;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0038, 0.0038, L, 8), lambert(0xe3b52c));
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.0038, 0.014, 8), lambert(0xd9c7a3));
-  tip.position.y = -L / 2 - 0.007;
-  tip.rotation.x = Math.PI;
-  const lead = new THREE.Mesh(new THREE.ConeGeometry(0.0012, 0.004, 6), lambert(INK));
-  lead.position.y = -L / 2 - 0.013;
-  lead.rotation.x = Math.PI;
-  const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.012, 8), lambert(0xc9c9c9));
-  ferrule.position.y = L / 2 + 0.005;
-  const eraser = new THREE.Mesh(new THREE.CylinderGeometry(0.0038, 0.0038, 0.009, 8), lambert(0xe0a3a0));
-  eraser.position.y = L / 2 + 0.015;
-  g.add(body, tip, lead, ferrule, eraser);
+  const W = 0.32, H = 0.18, D = 0.006;
+  const face = new THREE.MeshBasicMaterial({ map: drawSlide() });   // unlit: reads like a screen
+  const edge = lambert(0xd8d8d8);
+  // BoxGeometry order: +x, -x, +y, -y, +z, -z — the slide on both z faces
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D), [edge, edge, edge, edge, face, face]));
   return g;
 }
 
@@ -255,27 +281,17 @@ const ITEMS = {
   // rather than the wrist's — the wrist's twist is whatever the scan gave it.
   notebook: [
     { build: buildNotebook, anchor: 'LeftHand', along: 0.05, offset: [0, 0.02, 0.01], rot: [-0.85, 0.15, 0], fixedRot: true },
-    // tip (−y) down and forward into the page
-    { build: buildPencil, anchor: 'RightHand', along: 0.07, offset: [0, 0.03, 0.0], rot: [0.55, 0, -0.45], fixedRot: true },
   ],
   coffee: [{ build: buildCoffee, anchor: 'RightHand', along: 0.05, offset: [-0.012, 0.015, 0.045], rot: [0, 0, 0], fixedRot: true }],
   // His right is −x: the phone sits in the palm, flat against the ear.
   phone: [{ build: buildPhone, anchor: 'RightHand', along: 0.05, offset: [-0.02, 0.01, 0.02], rot: [0.10, 0.55, -0.20], fixedRot: true }],
 };
 
-// Floating versions: one composite object per chip, spun over his head like a
-// plumbob. The pencil lies across the notebook so the pair reads as one thing.
+// Floating versions: one object per chip, spun over his head like a plumbob.
 const FLOAT_ITEMS = {
-  book: (r) => { const g = buildBook(r); return g; },
-  notebook: () => {
-    const g = new THREE.Group();
-    const nb = buildNotebook();
-    const pen = buildPencil();
-    pen.position.set(0.02, 0.0, 0.012);
-    pen.rotation.z = -0.6;
-    g.add(nb, pen);
-    return g;
-  },
+  slide: () => buildSlide(),
+  book: (r) => buildBook(r),
+  notebook: () => buildNotebook(),
   phone: () => buildPhone(),
   coffee: () => buildCoffee(),
 };

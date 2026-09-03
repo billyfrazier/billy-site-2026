@@ -20,7 +20,7 @@ const REPLIES = {
     chips: [],
   },
   help: {
-    text: 'I write and speak about creating your own career, whatever that means to you.',
+    text: "I'm currently helping people share their ideas with pretty slides.",
     chips: [{ label: "Let's talk →", href: `mailto:${EMAIL}` }],
   },
   book: {

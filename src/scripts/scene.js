@@ -249,8 +249,7 @@ export function initScene({ stage, motionChip, onProgress }) {
 
   // Which reply puts what in his hands. The pose of the same name in rig.js
   // brings his arms and head to it.
-  // "help" has no object: he just talks to you.
-  const PROP_FOR = { book: 'book', substack: 'notebook', contact: 'phone', coffee: 'coffee' };
+  const PROP_FOR = { help: 'slide', book: 'book', substack: 'notebook', contact: 'phone', coffee: 'coffee' };
   // 'float': the object spins above his head like a plumbob and he glances up
   // at it. 'hold': it goes in his hands and he poses around it (rig POSES).
   const PROP_MODE = q.get('props') ?? 'float';
