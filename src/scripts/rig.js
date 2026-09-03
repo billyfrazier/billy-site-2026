@@ -40,7 +40,7 @@ const HAND_TWIST = parseFloat(new URLSearchParams(location.search).get('twist') 
 // the palm). The scan has no finger bones; tools/model/fingers adds one per
 // hand at the knuckles. A relaxed hand curls a little, a hand around a cup
 // a lot. ?curl= tunes the rest value.
-const REST_CURL = parseFloat(new URLSearchParams(location.search).get('curl') ?? '1.15');
+const REST_CURL = parseFloat(new URLSearchParams(location.search).get('curl') ?? '2.2');
 export const POSES = {
   hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0, twist: HAND_TWIST, curl: REST_CURL },
   // Both hands out front under a laptop, eyes on the screen.

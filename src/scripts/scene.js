@@ -21,7 +21,7 @@ const BODY_TILT = parseFloat(q.get('tilt') ?? '0');
 // The rigged full-body figure; ?model=bust loads the earlier head-and-shoulders one.
 const MODEL_URL = q.get('model') === 'bust' ? '/models/billy-bust.glb'
   : q.get('model') === 'src' ? '/models/billy-body-src.glb'   // dev: uncompressed, for texture edits
-  : '/models/billy-body.glb';
+  : `/models/billy-body.glb?v=${document.body.dataset.modelV ?? ''}`;  // content-versioned: see index.astro
 
 export function initScene({ stage, motionChip, onProgress }) {
   const canvas = document.createElement('canvas');

@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-03 — "Subscribe" floats a composition book (marbled cover, label, black spine); fists are actual fists (curl 2.2); the model URL is content-versioned so a browser can't hold an old scan.
 - 2026-09-03 — Floating items smaller and higher over his head; a modelled iPhone (screen, camera plateau, buttons); fingers curl to a loose fist; reset no longer moves him; mobile text sheet sits lower (54svh) and scrolls inside; chips hover light gray, CTAs stay black.
 - 2026-09-03 — Objects float above his head again (book, notebook + pencil, phone, coffee cup), spinning like a plumbob; he glances up at them. Holding mode stays one switch away (`?props=hold`).
 - 2026-09-03 — Fingers curl: the scan had no finger bones, so the pipeline now adds one per hand at the knuckles and the rig curls them — a little at rest, more around the cup, phone and pencil.

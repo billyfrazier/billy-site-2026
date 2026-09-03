@@ -57,19 +57,46 @@ function buildLaptop() {
   return g;
 }
 
-// A5 notebook, cream page block with a dark cover, lying open-flat is too
-// much geometry to read at this size — closed, held like a clipboard.
+// A composition book: 7.5 × 9.75 in, black-and-white marbled cover with the
+// white label, black cloth tape down the spine, cream page block. The cover
+// is drawn to a canvas — the marble is random ink blots on white.
+function drawCompositionCover() {
+  const c = document.createElement('canvas'); c.width = 384; c.height = 500;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f2efe6'; g.fillRect(0, 0, 384, 500);
+  // marble: two passes of irregular blots, dense enough to read as the pattern
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  g.fillStyle = '#141414';
+  for (let i = 0; i < 2600; i++) {
+    const x = rnd() * 384, y = rnd() * 500, r = 2 + rnd() * 7;
+    g.beginPath();
+    for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2, rr = r * (0.6 + rnd() * 0.8); g.lineTo(x + Math.cos(a) * rr * 1.4, y + Math.sin(a) * rr); }
+    g.closePath(); g.fill();
+  }
+  // black cloth spine
+  g.fillStyle = '#111'; g.fillRect(0, 0, 46, 500);
+  // the label
+  g.fillStyle = '#fbfaf5'; g.beginPath(); g.roundRect(96, 150, 250, 190, 6); g.fill();
+  g.strokeStyle = '#222'; g.lineWidth = 3; g.strokeRect(104, 158, 234, 174);
+  g.fillStyle = '#222'; g.font = 'bold 22px Helvetica, Arial'; g.textAlign = 'center';
+  g.fillText('COMPOSITIONS', 221, 205);
+  g.strokeStyle = '#333'; g.lineWidth = 1.5;
+  for (const y of [250, 285, 320]) { g.beginPath(); g.moveTo(124, y); g.lineTo(318, y); g.stroke(); }
+  g.font = '13px Helvetica, Arial'; g.fillText('NAME', 150, 245);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
 function buildNotebook() {
   const g = new THREE.Group();
-  const W = 0.148, H = 0.21, D = 0.014;
-  g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D),
-    [lambert(PAGE), lambert(0x26241f), lambert(PAGE), lambert(PAGE), lambert(PAGE), lambert(0x26241f)]));
-  // the open page faces him (+z is the figure's forward); a few ruled lines
-  for (let i = -3; i <= 3; i++) {
-    const line = box(W * 0.7, 0.0012, 0.0004, lambert(0xb9b2a2));
-    line.position.set(0, i * 0.022, D / 2 + 0.0004);
-    g.add(line);
-  }
+  const W = 0.19, H = 0.247, D = 0.014;
+  const cover = new THREE.MeshLambertMaterial({ map: drawCompositionCover() });
+  const spine = lambert(0x111111);
+  // BoxGeometry order: +x, -x, +y, -y, +z, -z — spine on -x, marbled cover
+  // front AND back (it spins; a black back read as a different object)
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D), [lambert(PAGE), spine, lambert(PAGE), lambert(PAGE), cover, cover]));
   return g;
 }
 
@@ -244,8 +271,8 @@ const FLOAT_ITEMS = {
     const g = new THREE.Group();
     const nb = buildNotebook();
     const pen = buildPencil();
-    pen.position.set(0.01, 0.0, 0.012);
-    pen.rotation.z = -0.55;
+    pen.position.set(0.02, 0.0, 0.012);
+    pen.rotation.z = -0.6;
     g.add(nb, pen);
     return g;
   },

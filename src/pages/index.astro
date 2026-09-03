@@ -1,6 +1,11 @@
 ---
 import '../styles/global.css';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 const hasBust = true;
+// The model keeps its filename across regenerations, so version its URL by
+// content — otherwise a browser (and the preload) can hold an old scan.
+const modelV = createHash('md5').update(readFileSync('public/models/billy-body.glb')).digest('hex').slice(0, 8);
 ---
 <html lang="en">
 <head>
@@ -13,9 +18,9 @@ const hasBust = true;
   <meta property="og:title" content="Billy Frazier" />
   <meta property="og:description" content="Fumbling forward through work and life while sharing notes with the rest of the class." />
   <meta property="og:type" content="website" />
-  {hasBust && <link rel="preload" href="/models/billy-body.glb" as="fetch" crossorigin="anonymous" />}
+  {hasBust && <link rel="preload" href={`/models/billy-body.glb?v=${modelV}`} as="fetch" crossorigin="anonymous" />}
 </head>
-<body data-has-bust={hasBust || undefined}>
+<body data-has-bust={hasBust || undefined} data-model-v={modelV}>
   <div class="stage" id="stage" aria-hidden="true"></div>
 
   <header class="site-header">

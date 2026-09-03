@@ -46,7 +46,9 @@ the LISA reference.
   offset 0. Tunable at runtime via `?bodyyaw=` `?headyaw=` `?neck0=` `?neck1=`
   `?model=` (dev affordances).
 - Model: Meshy multi_image_to_3d from hi-res crops, 100k polys, meshopt+webp
-  2048px (1.5MB). Raw candidates and rejects live in assets/models-raw/
+  2048px (1.5MB). Its URL carries `?v=<content hash>` (computed in
+  index.astro at build) so a regenerated file with the same name is never
+  served from a browser's cache — the preload and the loader both use it. Raw candidates and rejects live in assets/models-raw/
   (gitignored). **Optimize with `--simplify false`** — the default simplify pass
   facets the silhouette and hairline; the size win isn't worth the jagged edges.
 - three.js, lazy chunk imported one frame after first paint (the static shell
@@ -82,7 +84,8 @@ poses him around it instead — both paths are kept because this has flipped
 twice). "Learn how I can help" has no object (the laptop was dropped
 2026-09-03); "Buy my book" → the book, cover out;
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
-"Subscribe" → the notebook with the pencil across it; "Drop a quick line" →
+"Subscribe" → a composition book (marbled cover drawn to a canvas, both
+faces, black cloth spine) with the pencil across it; "Drop a quick line" →
 the iPhone (a modelled one: titanium frame, drawn screen, camera plateau on
 the back — it spins, so the back shows); "Grab coffee with me" → the to-go cup. Floating items are drawn
 at 1.25× the figure's scale with 14 cm of air above the crown. Reset clears
@@ -165,8 +168,9 @@ composed onto the captured rest pose each frame:
   the bone's own length). At rest the twist is −0.8: the A-pose scan has the
   palms facing out, this rolls them in to the thighs. `?twist=` tunes it.
   Each pose also sets a finger `curl` (radians on the knuckle bones that
-  tools/model/fingers adds — the scan has none): 1.15 at rest, a loose
-  action-figure fist, 1.0 around the cup in hold mode. `?curl=` tunes the rest value. Chips blend to the matching pose
+  tools/model/fingers adds — the scan has none): 2.2 at rest, an
+  action-figure fist (1.35 only hooks the tips; 3.0 folds them into the
+  palm), 1.0 around the cup in hold mode. `?curl=` tunes the rest value. Chips blend to the matching pose
   (~0.4s, from wherever he currently is); reset blends back to `hang`. While
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across
