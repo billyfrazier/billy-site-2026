@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-03 — Mobile: the white fade at the bottom of the text sheet is gone; the lower chips show at full strength.
 - 2026-09-03 — "Learn how I can help" floats a slide (pie chart + bar graph) and reads "I'm currently helping people share their ideas with pretty slides." The pencil is off the notebook.
 - 2026-09-03 — Hands back to the scan's own (no finger curl at rest); the inward turn stays.
 - 2026-09-03 — "Subscribe" floats a composition book (marbled cover, label, black spine); fists are actual fists (curl 2.2); the model URL is content-versioned so a browser can't hold an old scan.

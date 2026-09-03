@@ -30,9 +30,10 @@ bar (blue while the GLB loads, black for typing progress). Bottom-right slot:
 live there; we ship no sound. Mobile ≤720px: the text moves into a solid white sheet pinned to the bottom
 with a rounded top edge (no translucent scrim over the face). The sheet is a
 fixed 54svh (svh, not dvh: Safari's collapsing toolbar would grow it as you
-scroll) and scrolls inside — a long reply never pushes it up over him. A
-sticky white gradient (`.col::after`) fades overflowing content out above the
-fixed reset/motion controls instead of letting it run under them.
+scroll) and scrolls inside — a long reply never pushes it up over him. No
+fade at the bottom edge (one was tried 2026-09-03 and dimmed the lower
+chips; Billy took it out) — overflow runs under the fixed controls until you
+scroll, and the 5rem bottom padding brings the last item clear.
 The bust is framed in the clear space above it, the reset button becomes a filled black circle over
 the sheet, and the progress bar becomes a hairline on the bottom edge — matching
 the LISA reference.
