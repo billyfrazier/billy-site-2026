@@ -20,8 +20,17 @@ const hasBust = true;
 
   <header class="site-header">
     <a class="logo" href="/"><img src="/logo.svg" alt="Billy Frazier" width="164" height="32" /></a>
-    <a href="mailto:hello@billyfrazier.is">Let's talk</a>
+    <button class="menu-btn" id="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="site-menu">
+      <span></span><span></span><span></span>
+    </button>
   </header>
+
+  <!-- Site menu: the home for separate pages as they arrive. -->
+  <nav class="site-menu" id="site-menu" aria-label="Site" hidden>
+    <ul>
+      <li><a href="mailto:hello@billyfrazier.is">Let's talk</a></li>
+    </ul>
+  </nav>
 
   <main class="col">
     <p class="intro-line">Hi, I'm Billy Frazier, an author, experience designer, leader, and forward fumbler.</p>

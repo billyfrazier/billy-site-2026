@@ -68,7 +68,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.scale.setScalar(parseFloat(q.get('mobs') ?? '1.0'));
       camera.position.set(0, 0.1, 3.1);
       props?.setLayout({
-        position: new THREE.Vector3(0.04, parseFloat(q.get('propy') ?? '0.85'), 0.25),
+        position: new THREE.Vector3(0.04, 0, 0.25), // x/y re-anchored to the crown each frame
         scale: parseFloat(q.get('propb') ?? '0.45'),
       });
     } else {
@@ -79,7 +79,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       pivot.scale.setScalar(parseFloat(q.get('busts') ?? '0.8'));
       camera.position.set(0, 0.1, 2.9);
       props?.setLayout({
-        position: new THREE.Vector3(0, parseFloat(q.get('propy') ?? '0.72'), 0.25),
+        position: new THREE.Vector3(0, 0, 0.25), // x/y re-anchored to the crown each frame
         scale: parseFloat(q.get('propb') ?? '0.5'),
       });
     }
@@ -236,8 +236,21 @@ export function initScene({ stage, motionChip, onProgress }) {
     swapT += (swapTarget - swapT) * (1 - Math.exp(-7 * dt));
     if (Math.abs(swapTarget - swapT) < 0.002) swapT = swapTarget;
     applySwap();
+    anchorProps();
     props?.update(dt);
     renderOnce();
+  }
+
+  // Props hang a fixed gap above the crown (the rig's `head_end` bone), so they
+  // sit close to him whatever the model's proportions, and ride along when a
+  // reaction moves his head. ?propgap= tunes the clearance.
+  const PROP_GAP = parseFloat(q.get('propgap') ?? '0.05');
+  const _crown = new THREE.Vector3();
+  function anchorProps() {
+    const crown = rig?.bones.head_end;
+    if (!crown || !props) return;
+    crown.getWorldPosition(_crown);
+    props.setAnchor(_crown, PROP_GAP);
   }
 
   function start() {
@@ -265,7 +278,7 @@ export function initScene({ stage, motionChip, onProgress }) {
       const item = PROP_FOR[e.detail.key];
       if (item) props.setItem(item);      // swap the icon while it is hidden
       swapTarget = item ? 1 : 0;
-      if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
+      if (!running) { swapT = swapTarget; applySwap(); anchorProps(); props.update(0); renderOnce(); } // no loop: snap
       if (!rig) return;
       if (item) {
         // Look up at the thing that just appeared, then answer it. The gesture

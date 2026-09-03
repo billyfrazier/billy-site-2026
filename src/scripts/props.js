@@ -88,15 +88,18 @@ export function createProps({ scene, renderer }) {
   scene.add(root);
 
   const items = {};
+  const halfHeight = {}; // per item, unscaled — so each one clears the head by the same gap
   for (const [key, build] of Object.entries(BUILDERS)) {
     const obj = build(renderer);
     obj.visible = false;
     root.add(obj);
     items[key] = obj;
+    halfHeight[key] = new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3()).y / 2;
   }
 
   let base = 1;
   let baseY = 0;
+  let gap = 0;
   let current = null;
   let t = 0;
 
@@ -104,6 +107,15 @@ export function createProps({ scene, renderer }) {
     root.position.copy(position);
     baseY = position.y;
     base = scale;
+  }
+
+  // Sims plumbob rule: the item floats a fixed gap above the top of the head,
+  // whatever its own height. `headTop` is world-space; call it every frame so
+  // the prop rides with the head when he looks around or a reaction lifts him.
+  function setAnchor(headTop, g) {
+    root.position.x = headTop.x;
+    gap = g;
+    baseY = headTop.y;
   }
 
   function setItem(key) {
@@ -131,8 +143,9 @@ export function createProps({ scene, renderer }) {
     if (!root.visible) return;
     t += dt;
     root.rotation.y = t * 0.7;
-    root.position.y = baseY + Math.sin(t * 1.6) * 0.03;
+    const lift = current ? gap + halfHeight[current] * root.scale.y : 0;
+    root.position.y = baseY + lift + Math.sin(t * 1.6) * 0.03;
   }
 
-  return { setLayout, setItem, setAmount, update, root };
+  return { setLayout, setAnchor, setItem, setAmount, update, root };
 }

@@ -1,4 +1,7 @@
 # Changelog
+- 2026-09-02 — Arms hang at his sides instead of the A-pose: upper arms are now aimed (a solved swing per target direction) rather than euler-rotated, because the rig's arm axes are tilted and "down" on one axis swung the arm behind him. Wave/present/shrug retuned against the hanging rest.
+- 2026-09-02 — Floating props sit right above his head: anchored to the crown bone every frame with a fixed clearance, instead of a hard-coded height.
+- 2026-09-02 — "Let's talk" replaced by a hamburger that drops a small menu (Let's talk lives there for now), ready for separate pages.
 - 2026-09-02 — He performs: procedural rig layer (breathing, weight shift, idle gaze drift) plus reactions — hover nods, clicking him recoils, each chip gets a glance up at its prop then a gesture. The cursor look is now a real aim at the pointer instead of a screen-position map, so pointing at his head makes him look back at you.
 - 2026-09-02 — Model repaired: the book baked onto his tee is properly painted out (was a dark ghost rectangle), the red bleed is gone from the black jeans, and the material is no longer fully self-lit, so the studio lights actually shape him. Texture back to 2048 for a sharper face; 948KB, up from 653KB. Pipeline in tools/model/.
 - 2026-09-02 — Fixed the preload: the page was preloading the old bust GLB (1.6MB) while the scene loaded the body.

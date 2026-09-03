@@ -20,6 +20,19 @@ initTyper({
   onProgress: setProgress,
 });
 
+// Hamburger → site menu. Closes on Escape or a click anywhere outside it.
+const menuBtn = document.getElementById('menu-btn');
+const menu = document.getElementById('site-menu');
+function setMenu(open) {
+  menu.hidden = !open;
+  menuBtn.setAttribute('aria-expanded', String(open));
+}
+menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+addEventListener('pointerdown', (e) => {
+  if (!menu.hidden && !menu.contains(e.target) && !menuBtn.contains(e.target)) setMenu(false);
+});
+
 requestAnimationFrame(() => {
   import('./scene.js')
     .then((m) => m.initScene({
