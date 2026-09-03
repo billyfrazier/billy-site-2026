@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-02 — New figure (v7): regenerated from a matted frontal cutout + the 3/4 body photo + the portrait, in that order. No book anywhere, one pair of hands (v2's book-holding hands were fused into its torso and showed as a second pair once the arms hung), open eyes, the smile. 1.1MB. Seven runs / 175 credits to find the input order; the inputs are now scripted in tools/model/matte.mjs.
 - 2026-09-02 — Arms hang at his sides instead of the A-pose: upper arms are now aimed (a solved swing per target direction) rather than euler-rotated, because the rig's arm axes are tilted and "down" on one axis swung the arm behind him. Wave/present/shrug retuned against the hanging rest.
 - 2026-09-02 — Floating props sit right above his head: anchored to the crown bone every frame with a fixed clearance, instead of a hard-coded height.
 - 2026-09-02 — "Let's talk" replaced by a hamburger that drops a small menu (Let's talk lives there for now), ready for separate pages.

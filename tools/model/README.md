@@ -1,10 +1,18 @@
 # Model repair pipeline
 
-How `public/models/billy-body.glb` is produced from the generator's raw output.
-Run it again if the figure is ever regenerated — the raw scan has the same two
-problems every time, because both source photos show Billy holding something.
+How `public/models/billy-body.glb` is produced. Current model: **v7**,
+`assets/models-raw/billy-body-v7-raw.glb`, Higgsfield/Meshy `multi_image_to_3d`
+(a-pose, rigged, 100k polys, 1.8 m) from three inputs made by `matte.mjs`.
 
-**What it fixes**
+**Input order matters more than anything else.** Meshy takes the subject extent
+*and the face* from the first image. Seven runs taught this the expensive way:
+body photo first → body fine, eyes shut (he looks down in that photo); portrait
+first → a bust, no body; unmatted group photo first → all three people and the
+bookshelf wall. The frontal cutout first (Billy alone, eyes open, cover painted
+out), then the 3/4 body, then the portrait, produced v7.
+
+**What it fixes** (steps 1–2 were built for v2, whose source photo still had
+the cover; on v7 the cover step finds no seeds and skips itself)
 
 1. **The book baked onto his tee.** Both source photos have him holding the
    yellow *Fumbling Forward* cover at his waist, and the generator paints it
@@ -30,25 +38,24 @@ straight back through.
 ## Running it
 
 ```bash
-npm i -D playwright-core sharp                       # not shipped deps
-npx @gltf-transform/cli copy assets/models-raw/billy-body-raw.glb /tmp/m/body.gltf
+npm i -D playwright-core                             # sharp is already a transitive dep
+node tools/model/matte.mjs /tmp/m                    # the three generator inputs
+#   → upload in that order to multi_image_to_3d, download the GLB to assets/models-raw/
+npx @gltf-transform/cli copy assets/models-raw/billy-body-v7-raw.glb /tmp/m/body.gltf
 node tools/model/serve.mjs &                         # port 4599
-node tools/model/domask.mjs /assets/models-raw/billy-body-raw.glb /tmp/m
+node tools/model/domask.mjs /assets/models-raw/billy-body-v7-raw.glb /tmp/m
 node tools/model/fixtex.mjs /tmp/m/baseColor.png /tmp/m /tmp/m/fixed.png
+node tools/model/pack.mjs assets/models-raw/billy-body-v7-raw.glb public/models/billy-body.glb /tmp/m/fixed.png --simplify 0.45
 ```
 
-Then re-encode the texture, point the glTF at it, set the material factors
-(`emissiveFactor` `0.28`, `KHR_materials_specular.specularColorFactor` `1` —
-the generator ships a non-physical `2`), and pack it:
+`pack.mjs` sets the material factors (`emissiveFactor` `0.28`,
+`specularColorFactor` `1` — the generator ships a non-physical `2`), encodes
+the texture as webp q72, and meshopt-packs. `--simplify` is opt-in: the
+*default* simplify pass facets the silhouette, but 0.45 at error 0.0004 is
+invisible at render scale and takes the 103k-tri v7 from 1.5 MB to 1.1 MB.
 
-```bash
-npx sharp-cli -i /tmp/m/fixed.png -o /tmp/m/baseColor.webp --quality 72   # ~450KB
-npx @gltf-transform/cli optimize /tmp/m/body.gltf public/models/billy-body.glb \
-  --simplify false --texture-compress false --compress meshopt
-```
-
-`--simplify false` is not optional: the default pass facets the silhouette and
-the hairline.
+Then set `BODY_TILT` in scene.js by eye (`?tilt=`): v2 needed +0.13, v7 stands
+straight at 0.
 
 ## Checking it
 

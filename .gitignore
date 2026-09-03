@@ -9,6 +9,6 @@ assets/models-raw/*
 # tools/model/ repairs the body one into public/models/billy-body.glb, so it
 # has to be here for that to be reproducible.
 !assets/models-raw/billy-meshyhi.glb
-!assets/models-raw/billy-body-raw.glb
+!assets/models-raw/billy-body-v7-raw.glb
 .vercel
 .env*

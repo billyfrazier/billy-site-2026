@@ -17,6 +17,7 @@ const PLACEHOLDER = !document.body.dataset.hasBust;
 const q = new URLSearchParams(location.search);
 const BODY_YAW = parseFloat(q.get('bodyyaw') ?? '0.1');
 const HEAD_REST_YAW = parseFloat(q.get('headyaw') ?? '-0.12');
+const BODY_TILT = parseFloat(q.get('tilt') ?? '0');
 // The rigged full-body figure; ?model=bust loads the earlier head-and-shoulders one.
 const MODEL_URL = q.get('model') === 'bust' ? '/models/billy-bust.glb'
   : q.get('model') === 'src' ? '/models/billy-body-src.glb'   // dev: uncompressed, for texture edits
@@ -244,7 +245,7 @@ export function initScene({ stage, motionChip, onProgress }) {
   // Props hang a fixed gap above the crown (the rig's `head_end` bone), so they
   // sit close to him whatever the model's proportions, and ride along when a
   // reaction moves his head. ?propgap= tunes the clearance.
-  const PROP_GAP = parseFloat(q.get('propgap') ?? '0.05');
+  const PROP_GAP = parseFloat(q.get('propgap') ?? '0.03');
   const _crown = new THREE.Vector3();
   function anchorProps() {
     const crown = rig?.bones.head_end;
@@ -373,7 +374,7 @@ export function initScene({ stage, motionChip, onProgress }) {
         const center = box.getCenter(new THREE.Vector3());
         bust.position.sub(center);
         bust.scale.setScalar(1.55 / Math.max(size.x, size.y, size.z));
-        bust.rotation.x = 0.13; // counter the model's baked-in upward gaze
+        bust.rotation.x = BODY_TILT; // per-model: the v2 scan gazed up (+0.13); v7 already leans forward
         bust.rotation.y = BODY_YAW; // square chest/shoulders to the camera
         // A rigged model already has a head bone; only the unrigged bust needs
         // the runtime two-bone hack.
