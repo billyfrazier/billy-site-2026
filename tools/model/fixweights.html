@@ -1,0 +1,75 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">
+{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search);
+const R_ARM = +(q.get('r') ?? 0.075);        // farther than this from the arm's axis…
+const X_IN = +(q.get('xin') ?? 0.20);        // …and inside this |x| (the torso column) → not arm
+const BAND = 0.02;                           // soft edge on both tests
+
+const gltf = await new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(q.get('model'), res, undefined, rej));
+const root = gltf.scene; root.updateMatrixWorld(true);
+let mesh = null; root.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+mesh.skeleton.update();
+const bones = mesh.skeleton.bones;
+const bi = (n) => bones.findIndex((b) => b.name === n);
+const wp = (n) => bones[bi(n)].getWorldPosition(new THREE.Vector3());
+const geo = mesh.geometry;
+const J = geo.attributes.skinIndex, W = geo.attributes.skinWeight;
+const n = J.count;
+
+const sides = ['Right', 'Left'].map((s) => ({
+  arm: [bi(s + 'Arm'), bi(s + 'ForeArm'), bi(s + 'Hand')],
+  segs: [[wp(s + 'Arm'), wp(s + 'ForeArm')], [wp(s + 'ForeArm'), wp(s + 'Hand')]],
+}));
+const torso = { Spine: bi('Spine'), Spine01: bi('Spine01'), Spine02: bi('Spine02') };
+const torsoY = { Spine: wp('Spine').y, Spine01: wp('Spine01').y, Spine02: wp('Spine02').y };
+const nearestTorso = (y) => {
+  let best = null, bd = 9;
+  for (const [k, ty] of Object.entries(torsoY)) { const d = Math.abs(y - ty); if (d < bd) { bd = d; best = k; } }
+  return torso[best];
+};
+const smooth = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
+const segDist = (p, a, b) => {
+  const ab = b.clone().sub(a), t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq()));
+  return p.distanceTo(a.clone().addScaledVector(ab, t));
+};
+
+const outJ = new Uint8Array(n * 4), outW = new Float32Array(n * 4);
+const P = new THREE.Vector3();
+let moved = 0, movedWeight = 0;
+for (let i = 0; i < n; i++) {
+  mesh.getVertexPosition(i, P); P.applyMatrix4(mesh.matrixWorld);
+  const j = [0, 1, 2, 3].map((k) => J.getComponent(i, k));
+  const w = [0, 1, 2, 3].map((k) => W.getComponent(i, k));
+  for (const side of sides) {
+    let armW = 0;
+    for (let k = 0; k < 4; k++) if (side.arm.includes(j[k])) armW += w[k];
+    if (armW < 0.001) continue;
+    const d = Math.min(...side.segs.map(([a, b]) => segDist(P, a, b)));
+    // f = how much of the arm weight belongs to the torso instead
+    const f = smooth((d - R_ARM) / BAND) * smooth((X_IN - Math.abs(P.x)) / BAND);
+    if (f < 0.001) continue;
+    const target = nearestTorso(P.y);
+    let give = 0;
+    for (let k = 0; k < 4; k++) if (side.arm.includes(j[k])) { give += w[k] * f; w[k] *= (1 - f); }
+    // hand it to an existing torso slot, else the emptiest slot
+    let slot = j.findIndex((jj, k) => jj === target);
+    if (slot < 0) { slot = w.indexOf(Math.min(...w)); if (w[slot] > 0.02 && side.arm.includes(j[slot])) { /* keep */ } j[slot] = target; w[slot] = 0; }
+    w[slot] += give;
+    moved++; movedWeight += give;
+  }
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  for (let k = 0; k < 4; k++) { outJ[i * 4 + k] = j[k]; outW[i * 4 + k] = w[k] / sum; }
+}
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf.buffer, buf.byteOffset, Math.min(buf.byteLength, 1 << 30))).replace(/./g, (c) => c));
+// chunked base64 (String.fromCharCode has an arg limit)
+function toB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); }
+window.__out = { n, moved, movedWeight: +movedWeight.toFixed(1), joints: toB64(outJ), weights: toB64(new Uint8Array(outW.buffer)),
+  boneNames: bones.map((b) => b.name) };
+window.__ready = true;
+</script>

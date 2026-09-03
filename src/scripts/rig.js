@@ -84,8 +84,10 @@ const REACTIONS = {
   wave: { dur: 2.0, apply: (u, add, arm) => {
     const env = bell(u);
     const sway = Math.sin(u * Math.PI * 7) * 0.32;
-    arm('right', 'up', [-0.80, 0.42, 0.20], env);
-    arm('right', 'fore', [sway, 0.92, 0.25], env);
+    // Upper arm just under horizontal: any higher and the scan's armpit — a
+    // closed surface between sleeve and jacket side — stretches into a web.
+    arm('right', 'up', [-0.95, 0.06, 0.26], env);
+    arm('right', 'fore', [sway * 0.8, 0.90, 0.35], env);
     add('Head', 'z', 0.05 * env);
   } },
 
@@ -234,14 +236,15 @@ export function createRig(root) {
   // A bone's world position and its rotation *relative to rest*, for hanging
   // props off it: offsets given in the figure's frame at rest come out right
   // wherever the bone has moved since.
-  const _anchorPos = new THREE.Vector3(), _anchorQ = new THREE.Quaternion(), _rq = new THREE.Quaternion();
+  // Returns fresh objects: callers compare two anchors in one frame.
+  const _rq = new THREE.Quaternion();
   function anchor(name) {
     const b = bones[name];
     if (!b) return null;
     b.updateWorldMatrix(true, false);
-    b.getWorldPosition(_anchorPos);
-    b.getWorldQuaternion(_anchorQ).multiply(_rq.copy(restWorldQ.get(b)).invert()); // delta from rest
-    return { pos: _anchorPos, q: _anchorQ.multiply(rootQ) };
+    const pos = b.getWorldPosition(new THREE.Vector3());
+    const q = b.getWorldQuaternion(new THREE.Quaternion()).multiply(_rq.copy(restWorldQ.get(b)).invert()); // delta from rest
+    return { pos, q: q.multiply(rootQ) };
   }
 
   // idleness: 0 while the pointer is live, 1 once he has been left alone.
@@ -321,5 +324,5 @@ export function createRig(root) {
     }
   }
 
-  return { update, setLook, setPose, trigger, anchor, bones, root, isBusy: () => active.length > 0 };
+  return { update, setLook, setPose, trigger, anchor, rootQ: () => rootQ, bones, root, isBusy: () => active.length > 0 };
 }

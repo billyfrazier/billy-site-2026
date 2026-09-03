@@ -103,17 +103,25 @@ function buildPhone() {
   return g;
 }
 
-// Where each prop sits: bone, offset from that bone in the figure's frame at
-// rest (metres), and its orientation there (euler, radians). Tuned by looking.
+// Where each prop sits. `anchor: 'hands'` puts it between the two hands —
+// centred on their midpoint, its x-axis along the line from right hand to
+// left — so a two-handed object is *in* the hands wherever the pose lands
+// them. Single-bone anchors take an offset in the figure's frame at rest
+// (metres) and an orientation there (euler, radians). There are no finger
+// bones, so an object overlapping the palm is what "held" looks like.
 const ITEMS = {
-  laptop: [{ build: buildLaptop, anchor: 'Spine', offset: [0.0, -0.30, 0.30], rot: [0.06, 0, 0] }],
-  book: [{ build: buildBook, anchor: 'Spine', offset: [0.0, -0.17, 0.27], rot: [-0.45, 0, 0] }],
+  laptop: [{ build: buildLaptop, anchor: 'hands', offset: [0, -0.02, 0.02], rot: [0.06, 0, 0] }],
+  book: [{ build: buildBook, anchor: 'hands', offset: [0, 0.03, 0.0], rot: [-0.45, 0, 0] }],
+  // Hand bones sit at the wrist; `along` walks out toward the fingers along
+  // the forearm's direction (metres). `fixedRot` orients in the figure's frame
+  // rather than the wrist's — the wrist's twist is whatever the scan gave it.
   notebook: [
-    { build: buildNotebook, anchor: 'LeftHand', offset: [0.0, 0.07, 0.05], rot: [-0.85, 0.15, 0] },
-    { build: buildPencil, anchor: 'RightHand', offset: [-0.01, 0.03, 0.05], rot: [-0.45, 0, 0.30] },
+    { build: buildNotebook, anchor: 'LeftHand', along: 0.05, offset: [0, 0.02, 0.01], rot: [-0.85, 0.15, 0], fixedRot: true },
+    // tip (−y) down and forward into the page
+    { build: buildPencil, anchor: 'RightHand', along: 0.07, offset: [0, 0.03, 0.0], rot: [0.55, 0, -0.45], fixedRot: true },
   ],
-  // His right is −x: the phone sits just outside the hand, against the ear.
-  phone: [{ build: buildPhone, anchor: 'RightHand', offset: [-0.035, 0.035, 0.03], rot: [0.10, 0.55, -0.20] }],
+  // His right is −x: the phone sits in the palm, flat against the ear.
+  phone: [{ build: buildPhone, anchor: 'RightHand', along: 0.05, offset: [-0.02, 0.01, 0.0], rot: [0.10, 0.55, -0.20], fixedRot: true }],
 };
 
 export function createProps({ scene, renderer }) {
@@ -133,7 +141,7 @@ export function createProps({ scene, renderer }) {
 
   let current = null;
   let amount = 0;
-  const _off = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
+  const _off = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _dir = new THREE.Vector3();
 
   function setItem(key) {
     current = key && items[key] ? key : null;
@@ -155,19 +163,45 @@ export function createProps({ scene, renderer }) {
     });
   }
 
-  // Place every part of the current item on its bone. Needs the rig, which has
-  // already posed him this frame.
+  // Between the hands: midpoint, with x along right → left hand and y kept
+  // as close to the figure's up as that allows.
+  const _r = new THREE.Vector3(), _l = new THREE.Vector3(), _x = new THREE.Vector3();
+  const _y = new THREE.Vector3(), _z = new THREE.Vector3(), _m = new THREE.Matrix4();
+  const _hands = { pos: new THREE.Vector3(), q: new THREE.Quaternion() };
+  function handsAnchor(rig) {
+    const r = rig.anchor('RightHand'); if (!r) return null;
+    _r.copy(r.pos);
+    const l = rig.anchor('LeftHand'); if (!l) return null;
+    _l.copy(l.pos);
+    _hands.pos.copy(_r).add(_l).multiplyScalar(0.5);
+    _x.copy(_l).sub(_r).normalize();                       // figure's +x is his left
+    _y.set(0, 1, 0).applyQuaternion(rig.rootQ());
+    _z.crossVectors(_x, _y).normalize();
+    _y.crossVectors(_z, _x).normalize();
+    _hands.q.setFromRotationMatrix(_m.makeBasis(_x, _y, _z));
+    return _hands;
+  }
+
+  // Place every part of the current item. Needs the rig, which has already
+  // posed him this frame.
   function update(dt, rig) {
     if (!root.visible || !current || !rig) return;
     rig.root.getWorldScale(_s);
     const scale = _s.x * (0.7 + 0.3 * amount);
     for (const p of items[current]) {
-      const a = rig.anchor(p.anchor);
+      const a = p.anchor === 'hands' ? handsAnchor(rig) : rig.anchor(p.anchor);
       if (!a) { p.obj.visible = false; continue; }
       p.obj.visible = true;
-      _off.set(p.offset[0], p.offset[1], p.offset[2]).multiplyScalar(_s.x).applyQuaternion(a.q);
-      p.obj.position.copy(a.pos).add(_off);
-      p.obj.quaternion.copy(a.q).multiply(_q.setFromEuler(p.eul));
+      p.obj.position.copy(a.pos);
+      if (p.along) {
+        // out from the wrist toward the fingers: continue the forearm's line
+        const fore = rig.anchor(p.anchor.replace('Hand', 'ForeArm'));
+        if (fore) { _dir.copy(a.pos).sub(fore.pos).normalize(); p.obj.position.addScaledVector(_dir, p.along * _s.x); }
+      }
+      const frame = p.fixedRot ? rig.rootQ() : a.q;
+      _off.set(p.offset[0], p.offset[1], p.offset[2]).multiplyScalar(_s.x).applyQuaternion(frame);
+      p.obj.position.add(_off);
+      p.obj.quaternion.copy(frame).multiply(_q.setFromEuler(p.eul));
       p.obj.scale.setScalar(scale);
     }
   }

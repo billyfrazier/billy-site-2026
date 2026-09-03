@@ -77,10 +77,13 @@ the book held at the chest, cover to the viewer, head down into it;
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
 "Drop a quick line" → an iPhone at his right ear, head tilted to it, small
 talking nods. Reset puts them down and he shrugs. All primitives except the
-cover art. Each prop is anchored to a bone (Spine, LeftHand, RightHand) with
-an offset in the figure's frame at rest, and rides that bone's rotation *since
-rest* — so the phone stays on the ear as he turns and the pencil stays in the
-hand as it moves (`rig.anchor`). Real sizes in metres, scaled with the figure.
+cover art. Two-handed props (laptop, book) sit *between the hands* — centred on their
+midpoint, x-axis along right→left hand — so they are in the hands wherever a
+pose lands them. One-handed props anchor to a hand bone with an offset in the
+figure's frame at rest and ride that bone's rotation *since rest*, overlapping
+the palm (there are no finger bones; that is what "held" looks like), so the
+phone stays on the ear as he turns and the pencil stays in the hand as it
+moves (`rig.anchor`). Real sizes in metres, scaled with the figure.
 
 Framing: full body on desktop; phones crop to the upper body and cap the text
 sheet at 62dvh. Tunables: `?busty=` `?busts=` `?moby=` `?mobs=`; `?pose=laptop`
@@ -167,7 +170,12 @@ up +y, forward +z) every frame, solved against the bone's rest rotation so the
 artist's twist survives and only the swing changes; parents are refreshed
 first, so the forearm aims correctly whatever the upper arm just did. That is
 what gives him elbows — the old single-joint wave was a stiff lever from the
-shoulder with the torso leaning to help. Directions blend (lerp + normalise)
+shoulder with the torso leaning to help. The other half of "arms stuck to the
+torso" was the scan's skin weights: the auto-rig gave the upper-arm bone a
+wedge of the jacket's side, so the jacket rose with the arm. Repaired by rule
+in tools/model (`fixweights`); what remains is the armpit itself, a closed
+surface a scan cannot articulate, so the wave keeps the upper arm just under
+horizontal and lets the forearm do the waving. Directions blend (lerp + normalise)
 rather than quaternions slerping, so poses are plain numbers to tune. This all
 survives a model swap untouched.
 

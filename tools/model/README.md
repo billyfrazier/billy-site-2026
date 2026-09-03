@@ -21,7 +21,14 @@ the cover; on v7 the cover step finds no seeds and skips itself)
    footprint with the tee, sampled from the shirt around it.
 2. **A red bleed on the black jeans.** The scan picked up warm light as
    saturated red streaks across otherwise black denim.
-3. **A fully self-lit material.** The generator ships `emissiveFactor [1,1,1]`
+3. **Arm weights bleeding into the torso.** The auto-rig gives the upper-arm
+   bone a wide wedge of the jacket's side, armpit to hip, so raising the arm
+   drags the jacket up with it. `fixweights` hands any arm-bone weight that
+   sits inside the torso column (|x| < 0.20) *and* more than 0.075 from the
+   arm's axis to the nearest spine bone, with a soft edge on both tests. Paint
+   the result before trusting it (`?weights=RightArm+RightForeArm+RightHand`
+   in the harness viewer): the red must stop at the sleeve.
+4. **A fully self-lit material.** The generator ships `emissiveFactor [1,1,1]`
    with the base colour as the emissive map, so the studio lights did nothing
    and he read flat. Now `0.28` — enough baked-in photographic light to keep
    the skin tones, little enough that the key light actually shapes him.
@@ -45,7 +52,9 @@ npx @gltf-transform/cli copy assets/models-raw/billy-body-v7-raw.glb /tmp/m/body
 node tools/model/serve.mjs &                         # port 4599
 node tools/model/domask.mjs /assets/models-raw/billy-body-v7-raw.glb /tmp/m
 node tools/model/fixtex.mjs /tmp/m/baseColor.png /tmp/m /tmp/m/fixed.png
-node tools/model/pack.mjs assets/models-raw/billy-body-v7-raw.glb public/models/billy-body.glb /tmp/m/fixed.png --simplify 0.45
+node tools/model/fixweights.mjs /assets/models-raw/billy-body-v7-raw.glb /tmp/m     # → joints.bin, weights.bin
+npm i -D @gltf-transform/core && node tools/model/patchweights.mjs assets/models-raw/billy-body-v7-raw.glb /tmp/m assets/models-raw/billy-body-v7-weights.glb
+node tools/model/pack.mjs assets/models-raw/billy-body-v7-weights.glb public/models/billy-body.glb /tmp/m/fixed.png --simplify 0.45
 ```
 
 `pack.mjs` sets the material factors (`emissiveFactor` `0.28`,
