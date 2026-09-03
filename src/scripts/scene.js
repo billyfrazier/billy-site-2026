@@ -251,15 +251,19 @@ export function initScene({ stage, motionChip, onProgress }) {
   // brings his arms and head to it.
   // "help" has no object: he just talks to you.
   const PROP_FOR = { book: 'book', substack: 'notebook', contact: 'phone', coffee: 'coffee' };
+  // 'float': the object spins above his head like a plumbob and he glances up
+  // at it. 'hold': it goes in his hands and he poses around it (rig POSES).
+  const PROP_MODE = q.get('props') ?? 'float';
 
   function wireProps() {
-    props = createProps({ scene, renderer });
+    props = createProps({ scene, renderer, mode: PROP_MODE });
     layout(); // re-run so the prop picks up its per-breakpoint placement
     document.addEventListener('bf:reply', (e) => {
       const item = PROP_FOR[e.detail.key];
       if (item) props.setItem(item);      // swap the object while it is hidden
       swapTarget = item ? 1 : 0;
-      rig?.setPose(item ?? 'hang');       // arms and head go to the object (or back)
+      if (PROP_MODE === 'hold') rig?.setPose(item ?? 'hang');   // arms and head go to the object (or back)
+      else if (item) rig?.trigger('glance');                     // look up at what just appeared
       if (e.detail.key === 'intro') rig?.trigger('shrug');   // reset: back to nothing in particular
       if (!running) { swapT = swapTarget; applySwap(); renderOnce(); } // no loop: snap
     });

@@ -94,6 +94,15 @@ const REACTIONS = {
     add('neck', 'x', 0.07 * s);
   } },
 
+  // Glances up at the prop that just appeared over his head, then comes back.
+  glance: { dur: 1.55, apply: (u, add) => {
+    const s = hold(u);
+    add('Head', 'x', -0.40 * s);
+    add('neck', 'x', -0.15 * s);
+    add('Spine', 'x', -0.045 * s);
+    add('Head', 'z', 0.05 * s);
+  } },
+
   // Poked: a quick recoil that settles.
   recoil: { dur: 0.75, apply: (u, add, arm) => {
     const d = decay(u, 1.25);

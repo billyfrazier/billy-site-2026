@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-03 — Objects float above his head again (book, notebook + pencil, phone, coffee cup), spinning like a plumbob; he glances up at them. Holding mode stays one switch away (`?props=hold`).
 - 2026-09-03 — Fingers curl: the scan had no finger bones, so the pipeline now adds one per hand at the knuckles and the rig curls them — a little at rest, more around the cup, phone and pencil.
 - 2026-09-03 — Feet back to the scan's stance (the spread was reverted the same day).
 - 2026-09-03 — At rest the hands turn in to his thighs (were palms-out). He looks at you while holding things, not down at them. "Learn how I can help" no longer hands him a laptop. Held objects sit in front of the palm so the fingers read as wrapped rather than through the object.

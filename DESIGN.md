@@ -71,15 +71,19 @@ bust. It has a real humanoid skeleton, so the cursor drives its `Head` bone
 directly instead of the runtime two-bone hack the unrigged bust needed.
 `?model=bust` still loads the old one.
 
-Selecting a chip puts something in his hands and poses him around it — head
-level and on the viewer throughout, not down at the object (Billy's call):
-"Learn how I can help" → nothing in hand, he just talks to you (the laptop
-was dropped 2026-09-03); "Buy my book" → the book held at the chest, cover to
-the viewer;
+Selecting a chip floats its object above his head like a plumbob — spinning
+slowly, bobbing, riding his crown — and he glances up at it (`PROP_MODE`
+'float', the default since 2026-09-03; `?props=hold` puts it in his hands and
+poses him around it instead — both paths are kept because this has flipped
+twice). "Learn how I can help" has no object (the laptop was dropped
+2026-09-03); "Buy my book" → the book, cover out;
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
-"Drop a quick line" → an iPhone at his right ear, head tilted to it, small
-talking nods; "Grab coffee with me" → a to-go cup in his right hand, with a
-sip every ten seconds or so. Reset puts them down and he shrugs. All primitives except the
+"Subscribe" → the notebook with the pencil across it; "Drop a quick line" →
+the iPhone; "Grab coffee with me" → the to-go cup. Floating items are drawn
+at 1.6× the figure's scale — real size is too small to read up there. Reset
+clears it and he shrugs. In hold mode the poses (rig `POSES`) apply: cup and
+phone in the right hand with a sip / talking nods, notebook in the left with
+the pencil scribbling, book at the chest. All primitives except the
 cover art. Two-handed props (laptop, book) sit *between the hands* — centred on their
 midpoint, x-axis along right→left hand — so they are in the hands wherever a
 pose lands them. One-handed props anchor to a hand bone, walk out from the wrist along the

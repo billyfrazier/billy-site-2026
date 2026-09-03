@@ -142,23 +142,46 @@ const ITEMS = {
   phone: [{ build: buildPhone, anchor: 'RightHand', along: 0.05, offset: [-0.02, 0.01, 0.02], rot: [0.10, 0.55, -0.20], fixedRot: true }],
 };
 
-export function createProps({ scene, renderer }) {
+// Floating versions: one composite object per chip, spun over his head like a
+// plumbob. The pencil lies across the notebook so the pair reads as one thing.
+const FLOAT_ITEMS = {
+  book: (r) => { const g = buildBook(r); return g; },
+  notebook: () => {
+    const g = new THREE.Group();
+    const nb = buildNotebook();
+    const pen = buildPencil();
+    pen.position.set(0.01, 0.0, 0.012);
+    pen.rotation.z = -0.55;
+    g.add(nb, pen);
+    return g;
+  },
+  phone: () => buildPhone(),
+  coffee: () => buildCoffee(),
+};
+const FLOAT_SCALE = 1.6;   // × the figure's scale — real size is too small to read up there
+const FLOAT_GAP = 0.05;    // metres of clear air above the crown
+
+export function createProps({ scene, renderer, mode = 'float' }) {
   const root = new THREE.Group();
   root.visible = false;
   scene.add(root);
 
   const items = {};
-  for (const [key, parts] of Object.entries(ITEMS)) {
+  const source = mode === 'float' ? FLOAT_ITEMS : ITEMS;
+  for (const [key, def] of Object.entries(source)) {
+    const parts = mode === 'float' ? [{ build: def }] : def;
     items[key] = parts.map((p) => {
       const obj = p.build(renderer);
       obj.visible = false;
       root.add(obj);
-      return { ...p, obj, eul: new THREE.Euler(...p.rot) };
+      const halfH = new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3()).y / 2;
+      return { ...p, obj, halfH, eul: new THREE.Euler(...(p.rot ?? [0, 0, 0])) };
     });
   }
 
   let current = null;
   let amount = 0;
+  let t = 0;
   const _off = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _dir = new THREE.Vector3();
 
   function setItem(key) {
@@ -200,10 +223,27 @@ export function createProps({ scene, renderer }) {
     return _hands;
   }
 
+  // Float mode: the item hangs a fixed gap above the crown (head_end bone),
+  // riding with his head, spinning slowly with a gentle bob.
+  function updateFloat(dt, rig) {
+    const crown = rig.anchor('head_end');
+    if (!crown) return;
+    t += dt;
+    rig.root.getWorldScale(_s);
+    const p = items[current][0];
+    const scale = _s.x * FLOAT_SCALE * (0.55 + 0.45 * amount);
+    p.obj.visible = true;
+    p.obj.scale.setScalar(scale);
+    p.obj.position.copy(crown.pos);
+    p.obj.position.y += FLOAT_GAP * _s.x + p.halfH * scale + Math.sin(t * 1.6) * 0.03;
+    p.obj.rotation.set(0, t * 0.7, 0);
+  }
+
   // Place every part of the current item. Needs the rig, which has already
   // posed him this frame.
   function update(dt, rig) {
     if (!root.visible || !current || !rig) return;
+    if (mode === 'float') return updateFloat(dt, rig);
     rig.root.getWorldScale(_s);
     const scale = _s.x * (0.7 + 0.3 * amount);
     for (const p of items[current]) {
