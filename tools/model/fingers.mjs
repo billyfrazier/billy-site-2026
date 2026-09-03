@@ -1,0 +1,13 @@
+import { chromium } from 'playwright-core';
+import { writeFileSync } from 'node:fs';
+const [model, out] = process.argv.slice(2);
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await b.newPage(); p.on('pageerror', (e) => console.error('PAGEERROR', e.message));
+await p.goto(`http://localhost:4599/_t/fingers.html?model=${encodeURIComponent(model)}`, { waitUntil: 'load' });
+await p.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
+const o = await p.evaluate(() => window.__out);
+writeFileSync(`${out}/fingers-joints.bin`, Buffer.from(o.joints, 'base64'));
+writeFileSync(`${out}/fingers-weights.bin`, Buffer.from(o.weights, 'base64'));
+writeFileSync(`${out}/fingers.json`, JSON.stringify(o.sides));
+console.log(`verts ${o.n}, finger-weighted slots ${o.moved}, ibm convention error ${o.ibmConventionError};`, o.sides.map((s) => `${s.name}=joint${s.newIdx} under ${s.handIdx}`).join(', '));
+await b.close();

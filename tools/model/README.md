@@ -28,7 +28,15 @@ the cover; on v7 the cover step finds no seeds and skips itself)
    arm's axis to the nearest spine bone, with a soft edge on both tests. Paint
    the result before trusting it (`?weights=RightArm+RightForeArm+RightHand`
    in the harness viewer): the red must stop at the sleeve.
-4. **A fully self-lit material.** The generator ships `emissiveFactor [1,1,1]`
+4. **No finger bones.** The rig ends at the wrist, so hands are flat boards.
+   `fingers` adds a `RightFingers` / `LeftFingers` joint per hand at the
+   knuckles (~6 cm past the wrist along the forearm's line) and moves the hand
+   weight past that point onto it, with a soft band. The bone is placed with
+   the hand's world matrix and its inverse-bind is `inverse(matrixWorld)` —
+   the convention the scan's own joints use (checked: error 0). Do it all in
+   world metres: the armature is scaled 0.01, and mixing spaces put the first
+   attempt's pivot 100× away. `+x` on the new bone curls toward the palm.
+5. **A fully self-lit material.** The generator ships `emissiveFactor [1,1,1]`
    with the base colour as the emissive map, so the studio lights did nothing
    and he read flat. Now `0.28` — enough baked-in photographic light to keep
    the skin tones, little enough that the key light actually shapes him.
@@ -54,7 +62,9 @@ node tools/model/domask.mjs /assets/models-raw/billy-body-v7-raw.glb /tmp/m
 node tools/model/fixtex.mjs /tmp/m/baseColor.png /tmp/m /tmp/m/fixed.png
 node tools/model/fixweights.mjs /assets/models-raw/billy-body-v7-raw.glb /tmp/m     # → joints.bin, weights.bin
 npm i -D @gltf-transform/core && node tools/model/patchweights.mjs assets/models-raw/billy-body-v7-raw.glb /tmp/m assets/models-raw/billy-body-v7-weights.glb
-node tools/model/pack.mjs assets/models-raw/billy-body-v7-weights.glb public/models/billy-body.glb /tmp/m/fixed.png --simplify 0.45
+node tools/model/fingers.mjs /assets/models-raw/billy-body-v7-weights.glb /tmp/m      # → fingers-*.bin, fingers.json
+node tools/model/addfingers.mjs assets/models-raw/billy-body-v7-weights.glb /tmp/m assets/models-raw/billy-body-v7-fingers.glb
+node tools/model/pack.mjs assets/models-raw/billy-body-v7-fingers.glb public/models/billy-body.glb /tmp/m/fixed.png --simplify 0.45
 ```
 
 `pack.mjs` sets the material factors (`emissiveFactor` `0.28`,

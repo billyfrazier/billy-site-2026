@@ -103,7 +103,8 @@ tools README for the six runs that established it). The scan is then
 repaired and packed by the same tools: red bleed pulled out of the jeans,
 emissive `0.28` / specular `1` instead of the generator's fully self-lit
 material, webp q72 at 2048, simplified 0.45 (invisible at render scale).
-1.1 MB, 103k → 47k tris. `BODY_TILT` is 0 for this scan (v2 gazed up and
+1.1 MB, 103k → 47k tris, 26 joints (24 from the scan + a knuckle bone per
+hand). `BODY_TILT` is 0 for this scan (v2 gazed up and
 needed +0.13). `?model=bust` still loads the old head-and-shoulders model.
 
 v2 — the previous model, built from the launch photo where he holds the book —
@@ -153,8 +154,10 @@ composed onto the captured rest pose each frame:
   each forearm plus a head pitch/roll, and a forearm `twist` (radians about
   the bone's own length). At rest the twist is −0.8: the A-pose scan has the
   palms facing out, this rolls them in to the thighs. `?twist=` tunes it.
-  Chips blend to the matching pose (~0.4s, from wherever he currently is);
-  reset blends back to `hang`. While
+  Each pose also sets a finger `curl` (radians on the knuckle bones that
+  tools/model/fingers adds — the scan has none): 0.55 at rest, 1.0 around
+  the cup. `?curl=` tunes the rest value. Chips blend to the matching pose
+  (~0.4s, from wherever he currently is); reset blends back to `hang`. While
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across
   the page — so the pose never freezes.

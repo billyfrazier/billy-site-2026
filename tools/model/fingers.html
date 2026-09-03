@@ -1,0 +1,67 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">
+{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+</script>
+<script type="module">
+// Splits each hand's skin weight at the knuckles onto a new finger bone, and
+// works out where that bone goes. Everything is in the mesh's own space so the
+// inverse-bind matrices line up with the ones the scan shipped.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search);
+const KNUCKLE = +(q.get('knuckle') ?? 0.055);   // metres from the wrist along the hand
+const BAND = +(q.get('band') ?? 0.025);          // soft edge
+
+const gltf = await new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(q.get('model'), res, undefined, rej));
+const root = gltf.scene; root.updateMatrixWorld(true);
+let mesh = null; root.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+mesh.skeleton.update();
+const bones = mesh.skeleton.bones;
+const bi = (n) => bones.findIndex((b) => b.name === n);
+const wp = (n) => bones[bi(n)].getWorldPosition(new THREE.Vector3());   // world metres
+const geo = mesh.geometry, J = geo.attributes.skinIndex, W = geo.attributes.skinWeight, n = J.count;
+const smooth = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
+
+// Convention check: does each shipped inverse-bind equal inverse(bone.matrixWorld)?
+// (root at identity, rest pose). If so, a new bone's IBM is just that.
+let conv = 0;
+bones.forEach((b, i) => { const m = b.matrixWorld.clone().multiply(mesh.skeleton.boneInverses[i]).elements; for (let k = 0; k < 16; k++) conv = Math.max(conv, Math.abs(m[k] - (k % 5 === 0 ? 1 : 0))); });
+
+const sides = ['Right', 'Left'].map((s, k) => {
+  const wrist = wp(s + 'Hand'), elbow = wp(s + 'ForeArm');
+  const dir = wrist.clone().sub(elbow).normalize();
+  const knuckleW = wrist.clone().addScaledVector(dir, KNUCKLE + BAND * 0.5);
+  const handWorld = bones[bi(s + 'Hand')].matrixWorld;
+  const localK = knuckleW.clone().applyMatrix4(handWorld.clone().invert());     // in the hand joint's own frame
+  const fingerWorld = handWorld.clone().multiply(new THREE.Matrix4().makeTranslation(localK.x, localK.y, localK.z));
+  const ibm = fingerWorld.clone().invert();
+  return { name: s + 'Fingers', handIdx: bi(s + 'Hand'), newIdx: bones.length + k, wrist, dir, translation: localK.toArray(), ibm: ibm.toArray() };
+});
+
+const outJ = new Uint8Array(n * 4), outW = new Float32Array(n * 4);
+const P = new THREE.Vector3(); let moved = 0;
+for (let i = 0; i < n; i++) {
+  mesh.getVertexPosition(i, P).applyMatrix4(mesh.matrixWorld);   // skinned rest position, world metres
+  const j = [0, 1, 2, 3].map((k) => J.getComponent(i, k));
+  const w = [0, 1, 2, 3].map((k) => W.getComponent(i, k));
+  for (const s of sides) {
+    const slot = j.findIndex((jj, k) => jj === s.handIdx && w[k] > 0);
+    if (slot < 0) continue;
+    const t = P.clone().sub(s.wrist).dot(s.dir);
+    const f = smooth((t - KNUCKLE) / BAND);
+    if (f <= 0) continue;
+    const give = w[slot] * f;
+    w[slot] -= give;
+    let dst = j.findIndex((jj) => jj === s.newIdx);
+    if (dst < 0) { dst = w.indexOf(Math.min(...w)); if (dst === slot && w[slot] > 0) { /* keep both: overwrite the smallest other */ } j[dst] = s.newIdx; w[dst] = 0; }
+    w[dst] += give; moved++;
+  }
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  for (let k = 0; k < 4; k++) { outJ[i * 4 + k] = j[k]; outW[i * 4 + k] = w[k] / sum; }
+}
+function toB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); }
+window.__out = { n, moved, ibmConventionError: +conv.toFixed(5), sides: sides.map(({ name, handIdx, newIdx, translation, ibm }) => ({ name, handIdx, newIdx, translation, ibm })),
+  joints: toB64(outJ), weights: toB64(new Uint8Array(outW.buffer)) };
+window.__ready = true;
+</script>

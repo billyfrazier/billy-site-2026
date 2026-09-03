@@ -36,37 +36,42 @@ const HANG = R([-0.13, -0.99, 0.04], [-0.08, -0.98, 0.18]);
 // has the palms facing out, a person at rest has them facing the thigh.
 // ?twist= tunes it while a new model is calibrated.
 const HAND_TWIST = parseFloat(new URLSearchParams(location.search).get('twist') ?? '-0.8');
+// Finger curl, radians about the finger bone's x (measured: +x curls toward
+// the palm). The scan has no finger bones; tools/model/fingers adds one per
+// hand at the knuckles. A relaxed hand curls a little, a hand around a cup
+// a lot. ?curl= tunes the rest value.
+const REST_CURL = parseFloat(new URLSearchParams(location.search).get('curl') ?? '0.55');
 export const POSES = {
-  hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0, twist: HAND_TWIST },
+  hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0, twist: HAND_TWIST, curl: REST_CURL },
   // Both hands out front under a laptop, eyes on the screen.
   laptop: {
     right: R([-0.34, -0.86, 0.38], [0.22, -0.18, 0.96]),
     left: L(R([-0.34, -0.86, 0.38], [0.22, -0.18, 0.96])),
-    headPitch: 0, headRoll: 0,
+    headPitch: 0, headRoll: 0, curl: 0.5,
   },
   // Book held up at the chest, head down into it.
   book: {
     right: R([-0.30, -0.84, 0.45], [0.46, 0.34, 0.82]),
     left: L(R([-0.30, -0.84, 0.45], [0.46, 0.34, 0.82])),
-    headPitch: 0, headRoll: 0.04,
+    headPitch: 0, headRoll: 0.04, curl: 0.5,
   },
   // Left hand carries the notebook; right hand writes in it.
   notebook: {
     right: R([-0.28, -0.84, 0.46], [0.62, 0.32, 0.72]),
     left: L(R([-0.34, -0.86, 0.38], [0.45, 0.22, 0.87])),
-    headPitch: 0, headRoll: -0.05,
+    headPitch: 0, headRoll: -0.05, curl: 0.8,
   },
   // To-go cup held up at the chest in the right hand, left arm hanging.
   coffee: {
     right: R([-0.30, -0.88, 0.36], [0.30, 0.62, 0.72]),
     left: L(HANG),
-    headPitch: -0.04, headRoll: 0.03,
+    headPitch: -0.04, headRoll: 0.03, curl: 1.0,
   },
   // Phone to the right ear, left arm hanging.
   phone: {
     right: R([-0.42, -0.86, 0.30], [0.42, 0.80, 0.42]),
     left: L(HANG),
-    headPitch: 0.02, headRoll: 0.12,
+    headPitch: 0.02, headRoll: 0.12, curl: 0.9,
   },
 };
 
@@ -138,6 +143,7 @@ export function createRig(root) {
   const _pq = new THREE.Quaternion(), _bw = new THREE.Quaternion(), _r = new THREE.Quaternion();
   const _c = new THREE.Vector3(), _w = new THREE.Vector3();
   const _t = new THREE.Quaternion();
+  const X_AXIS = new THREE.Vector3(1, 0, 0);
   function aimBone(bone, child, dir, twist = 0) {
     bone.parent.updateWorldMatrix(true, false);
     bone.parent.getWorldQuaternion(_pq);
@@ -180,6 +186,7 @@ export function createRig(root) {
       headPitch: mix([poseFrom.headPitch], [poseTo.headPitch], 0),
       headRoll: mix([poseFrom.headRoll], [poseTo.headRoll], 0),
       twist: mix([poseFrom.twist ?? 0], [poseTo.twist ?? 0], 0),
+      curl: mix([poseFrom.curl ?? 0], [poseTo.curl ?? 0], 0),
     };
   }
 
@@ -329,6 +336,12 @@ export function createRig(root) {
       aimBone(ARMS[side].up[0], ARMS[side].up[1], [c.up.x, c.up.y, c.up.z]);
       // the twist mirrors: a right forearm rolled in is a left one rolled the other way
       aimBone(ARMS[side].fore[0], ARMS[side].fore[1], [c.fore.x, c.fore.y, c.fore.z], side === 'right' ? twist : -twist);
+    }
+    // Fingers: the added knuckle bones, curled toward the palm.
+    const curl = (poseFrom.curl ?? 0) + ((poseTo.curl ?? 0) - (poseFrom.curl ?? 0)) * pk;
+    for (const name of ['RightFingers', 'LeftFingers']) {
+      const b = bones[name];
+      if (b) b.quaternion.copy(rest.get(b).q).multiply(_t.setFromAxisAngle(X_AXIS, curl));
     }
   }
 
