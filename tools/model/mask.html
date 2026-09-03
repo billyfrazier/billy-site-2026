@@ -138,7 +138,10 @@ const box = { x0: bx0 - PADX, x1: bx1 + PADX, y0: by0 - 0.07, y1: by1 + 0.05 };
 // A second, much smaller box for the strand of cover left between his
 // fingertips. Narrow enough that it cannot reach the jacket panels.
 const strand = { x0: -0.06, x1: 0.06, y0: 0.915, y1: 0.985 };
-for (let t = 0; t < nTris; t++) {
+// No amber seeds means no cover in this scan (the source photo had it
+// painted out): skip both boxes rather than repaint the waist for nothing.
+const hasBook = bx1 > bx0;
+for (let t = 0; hasBook && t < nTris; t++) {
   if (isBook[t]) continue;
   const x = triC[t * 3], y = triY[t], z = triZ[t];
   const inMain = x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;

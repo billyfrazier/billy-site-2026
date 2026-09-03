@@ -1,5 +1,5 @@
 // Pack a raw generator GLB into the shipped one:
-//   node tools/model/pack.mjs <raw.glb> <out.glb> [texture.png]
+//   node tools/model/pack.mjs <raw.glb> <out.glb> [texture.png] [--simplify 0.45]
 // Unpacks to glTF, swaps in a repaired texture if given, sets the material
 // factors the generator gets wrong, re-encodes the texture as webp, and packs
 // with meshopt. Needs `sharp` (a transitive dep already) and the
@@ -10,9 +10,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 
-const [raw, out, texture] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const simplifyAt = args.indexOf('--simplify');
+// Opt-in, ratio only: the *default* simplify pass facets the silhouette and
+// hairline, but a ratio near 0.45 with error 0.0004 is invisible at render
+// scale and cuts ~30% off the file. Leave it off for models under ~50k tris.
+const SIMPLIFY = simplifyAt >= 0 ? parseFloat(args.splice(simplifyAt, 2)[1]) : 0;
+const [raw, out, texture] = args;
 if (!raw || !out) {
-  console.error('usage: node tools/model/pack.mjs <raw.glb> <out.glb> [texture.png]');
+  console.error('usage: node tools/model/pack.mjs <raw.glb> <out.glb> [texture.png] [--simplify 0.45]');
   process.exit(1);
 }
 
@@ -43,6 +49,8 @@ m.emissiveFactor = [EMISSIVE, EMISSIVE, EMISSIVE];
 if (m.extensions?.KHR_materials_specular) m.extensions.KHR_materials_specular.specularColorFactor = [1, 1, 1];
 writeFileSync(gltfPath, JSON.stringify(g));
 
-// --simplify false is not optional: the default pass facets the silhouette.
-cli('optimize', gltfPath, out, '--simplify', 'false', '--texture-compress', 'false', '--compress', 'meshopt');
+const simplify = SIMPLIFY
+  ? ['--simplify', 'true', '--simplify-ratio', String(SIMPLIFY), '--simplify-error', '0.0004']
+  : ['--simplify', 'false'];
+cli('optimize', gltfPath, out, ...simplify, '--texture-compress', 'false', '--compress', 'meshopt');
 console.log(`packed → ${out}: ${(readFileSync(out).length / 1024) | 0}KB`);
