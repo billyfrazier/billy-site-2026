@@ -38,9 +38,9 @@ const HANG = R([-0.13, -0.99, 0.04], [-0.08, -0.98, 0.18]);
 const HAND_TWIST = parseFloat(new URLSearchParams(location.search).get('twist') ?? '-0.8');
 // Finger curl, radians about the finger bone's x (measured: +x curls toward
 // the palm). The scan has no finger bones; tools/model/fingers adds one per
-// hand at the knuckles. A relaxed hand curls a little, a hand around a cup
-// a lot. ?curl= tunes the rest value.
-const REST_CURL = parseFloat(new URLSearchParams(location.search).get('curl') ?? '2.2');
+// hand at the knuckles. At rest it is 0 — Billy asked for the scan's own
+// hands back (2.2 made a fist, 1.35 hooked the tips). ?curl= still works.
+const REST_CURL = parseFloat(new URLSearchParams(location.search).get('curl') ?? '0');
 export const POSES = {
   hang: { right: HANG, left: L(HANG), headPitch: 0, headRoll: 0, twist: HAND_TWIST, curl: REST_CURL },
   // Both hands out front under a laptop, eyes on the screen.

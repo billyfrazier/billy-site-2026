@@ -168,9 +168,9 @@ composed onto the captured rest pose each frame:
   the bone's own length). At rest the twist is −0.8: the A-pose scan has the
   palms facing out, this rolls them in to the thighs. `?twist=` tunes it.
   Each pose also sets a finger `curl` (radians on the knuckle bones that
-  tools/model/fingers adds — the scan has none): 2.2 at rest, an
-  action-figure fist (1.35 only hooks the tips; 3.0 folds them into the
-  palm), 1.0 around the cup in hold mode. `?curl=` tunes the rest value. Chips blend to the matching pose
+  tools/model/fingers adds — the scan has none): 0 at rest — the scan's own
+  hands, by request; 2.2 was a fist, 1.35 hooked the tips — and 1.0 around
+  the cup in hold mode. `?curl=` tunes the rest value. Chips blend to the matching pose
   (~0.4s, from wherever he currently is); reset blends back to `hang`. While
   holding something he keeps most of his attention on it (the cursor look is
   damped) and does busywork — typing, scribbling, talking nods, eyes across
