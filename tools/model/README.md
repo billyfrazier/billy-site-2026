@@ -83,3 +83,21 @@ modes are all visual (the mask eating the jacket, amber left in the seams,
 denim flattened into a dead black). `mask.html` also emits `mask-bookzone.png`
 and friends; composite one over the texture in a solid colour and render the
 model before trusting a change.
+
+## The book's back cover
+
+`public/images/book-back.jpg` is the real back, flattened from a phone photo
+(`assets/source-photos/book-back.HEIC`). `rectify` finds the orange cover's
+four corners in the photo by colour and perspective-corrects it with a
+homography on the GPU:
+
+```bash
+sips -s format jpeg assets/source-photos/book-back.HEIC --out /tmp/m/back.jpg   # the browser can't load HEIC
+node tools/model/serve.mjs &
+node tools/model/rectify.mjs /assets/source-photos/book-back.jpg /tmp/m/back-flat.png 1200 1800
+# then encode: sharp → public/images/book-back.jpg, jpeg q86
+```
+
+The corner finder wants the cover to be the only saturated orange in frame;
+the printed corners in the log should trace the cover. A steeper photo makes
+the far edge softer — reshoot flatter if the blurb needs to read.

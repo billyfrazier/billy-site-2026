@@ -1,4 +1,5 @@
 # Changelog
+- 2026-09-05 — The floating book has its real back cover: blurb, author photo, barcode, flattened from a phone photo.
 - 2026-09-03 — Mobile: the white fade at the bottom of the text sheet is gone; the lower chips show at full strength.
 - 2026-09-03 — "Learn how I can help" floats a slide (pie chart + bar graph) and reads "I'm currently helping people share their ideas with pretty slides." The pencil is off the notebook.
 - 2026-09-03 — Hands back to the scan's own (no finger curl at rest); the inward turn stays.

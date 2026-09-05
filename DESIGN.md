@@ -83,7 +83,8 @@ slowly, bobbing, riding his crown — and he glances up at it (`PROP_MODE`
 'float', the default since 2026-09-03; `?props=hold` puts it in his hands and
 poses him around it instead — both paths are kept because this has flipped
 twice). "Learn how I can help" → a 16:9 slide (title, donut pie, bar graph, drawn to
-a canvas, both faces); "Buy my book" → the book, cover out;
+a canvas, both faces); "Buy my book" → the book, cover out, the real back cover on the reverse
+(flattened from a photo — tools/model/rectify);
 "Subscribe" → a notebook in the left hand, a pencil scribbling in the right;
 "Subscribe" → a composition book (marbled cover drawn to a canvas, both
 faces, black cloth spine); "Drop a quick line" →

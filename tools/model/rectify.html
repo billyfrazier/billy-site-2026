@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8">
+<script type="module">
+// Flattens a photographed book cover: finds the orange quad's four corners,
+// then warps it to a flat W×H image with a homography in a fragment shader.
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') ?? 1200), H = +(q.get('h') ?? 1800);
+const img = new Image(); img.crossOrigin = 'anonymous';
+await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = q.get('src'); });
+
+// --- corners: extreme points of the orange mask -------------------------------
+const sc = 1 / Math.max(1, Math.max(img.width, img.height) / 1200);
+const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, c.width, c.height);
+const d = g.getImageData(0, 0, c.width, c.height).data;
+const pts = [];
+for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+  const i = (y * c.width + x) * 4, r = d[i], gg = d[i + 1], b = d[i + 2];
+  const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+  // the cover's orange: bright, saturated, red-dominant, green well above blue
+  if (mx > 140 && (mx - mn) / mx > 0.45 && r === mx && gg > r * 0.45 && gg < r * 0.85 && b < gg * 0.6) pts.push([x, y]);
+}
+const best = (f) => pts.reduce((a, p) => (f(p) > f(a) ? p : a));
+const tl = best((p) => -(p[0] + p[1])), br = best((p) => p[0] + p[1]);
+const tr = best((p) => p[0] - p[1]), bl = best((p) => p[1] - p[0]);
+const corners = [tl, tr, br, bl].map(([x, y]) => [x / sc, y / sc]);
+
+// --- homography: unit square (u,v) → source pixel ---------------------------
+function homography(dst, src) {   // maps dst quad → src quad, returns 3x3 (row-major)
+  const A = [], bvec = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = dst[i], [X, Y] = src[i];
+    A.push([x, y, 1, 0, 0, 0, -x * X, -y * X]); bvec.push(X);
+    A.push([0, 0, 0, x, y, 1, -x * Y, -y * Y]); bvec.push(Y);
+  }
+  // solve A h = b (8x8) by Gaussian elimination
+  const n = 8, M = A.map((row, i) => [...row, bvec[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col; for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < n; r++) { if (r === col) continue; const f = M[r][col] / M[col][col]; for (let k = col; k <= n; k++) M[r][k] -= f * M[col][k]; }
+  }
+  const h = M.map((row, i) => row[n] / row[i]);
+  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+}
+const Hm = homography([[0, 0], [1, 0], [1, 1], [0, 1]], corners);
+
+// --- warp on the GPU ------------------------------------------------------------
+const out = document.createElement('canvas'); out.width = W; out.height = H;
+const gl = out.getContext('webgl', { preserveDrawingBuffer: true });
+const vs = `attribute vec2 p; varying vec2 uv; void main(){ uv = vec2(p.x, 1.0 - p.y); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+const fs = `precision highp float; varying vec2 uv; uniform sampler2D t; uniform mat3 Hm; uniform vec2 size;
+  void main(){ vec3 s = Hm * vec3(uv, 1.0); vec2 src = s.xy / s.z; gl_FragColor = texture2D(t, vec2(src.x / size.x, src.y / size.y)); }`;
+const prog = gl.createProgram();
+for (const [type, srcCode] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const sh = gl.createShader(type); gl.shaderSource(sh, srcCode); gl.compileShader(sh); gl.attachShader(prog, sh); }
+gl.linkProgram(prog); gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+// GLSL mat3 is column-major
+gl.uniformMatrix3fv(gl.getUniformLocation(prog, 'Hm'), false, new Float32Array([Hm[0], Hm[3], Hm[6], Hm[1], Hm[4], Hm[7], Hm[2], Hm[5], Hm[8]]));
+gl.uniform2f(gl.getUniformLocation(prog, 'size'), img.width, img.height);
+gl.viewport(0, 0, W, H); gl.drawArrays(gl.TRIANGLES, 0, 6);
+window.__out = { corners: corners.map((p) => p.map(Math.round)), orangePixels: pts.length, png: out.toDataURL('image/png') };
+window.__ready = true;
+</script>

@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 
 const COVER = '/images/book-cover.jpg';
+const BACK = '/images/book-back.jpg';   // flattened from a photo of the real back — see tools/model/README
 
 const INK = 0x1b1a19;
 const ACCENT = 0xe1a511;   // the book's orange, sampled from the cover art
@@ -26,9 +27,16 @@ function buildBook(renderer) {
   tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
   const W = 0.152, H = 0.229, D = 0.018;
   const cover = new THREE.MeshBasicMaterial({ map: tex }); // unlit: art stays true
+  // Back: the real back cover when the image exists, plain orange until then.
+  const back = new THREE.MeshBasicMaterial({ color: ACCENT });
+  new THREE.TextureLoader().load(BACK, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = tex.anisotropy;
+    back.map = t; back.color.set(0xffffff); back.needsUpdate = true;
+  }, undefined, () => { /* no back image yet: stays orange */ });
   // BoxGeometry material order: +x, -x, +y, -y, +z, -z
   g.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D),
-    [lambert(PAGE), lambert(SPINE), lambert(PAGE), lambert(PAGE), cover, lambert(ACCENT)]));
+    [lambert(PAGE), lambert(SPINE), lambert(PAGE), lambert(PAGE), cover, back]));
   return g;
 }
 
